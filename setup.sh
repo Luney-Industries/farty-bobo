@@ -169,7 +169,7 @@ _newest_subdir() {
   [[ -d "$parent" ]] || return 1
   while IFS= read -r -d '' dir; do
     mtime=$(stat -f '%m' "$dir" 2>/dev/null) || continue
-    (( mtime > newest_mtime )) && { newest_mtime=$mtime; newest="$dir"; }
+    if (( mtime > newest_mtime )); then newest_mtime=$mtime; newest="$dir"; fi
   done < <(find "$parent" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
   [[ -n "$newest" ]] || return 1
   echo "$newest"
@@ -206,7 +206,7 @@ _prune_desktop_skill_symlinks() {
     rm "$entry"
     removed=$((removed + 1))
   done < <(find "$target" -maxdepth 1 -type l -print0 2>/dev/null)
-  (( removed > 0 )) && warn "$removed stale skill symlinks removed from Claude Desktop"
+  if (( removed > 0 )); then warn "$removed stale skill symlinks removed from Claude Desktop"; fi
 }
 
 # Extracts each .skill archive from claude-desktop/skills/ into $1; prints a summary line.
