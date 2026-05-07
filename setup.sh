@@ -160,6 +160,34 @@ if ! $LINKS_ONLY; then
   fi
 fi
 
+# ── Claude Desktop skills (macOS only) ──────────────────────────
+# Dynamically locate the active skills-plugin slot by picking the most
+# recently modified <outer>/<inner> directory pair under skills-plugin.
+# Claude Desktop rotates the inner UUID on updates, so we sort by mtime.
+if [[ "$OSTYPE" == darwin* ]]; then
+  _desktop_skills_dir() {
+    local base="$CLAUDE_DESKTOP_DIR/local-agent-mode-sessions/skills-plugin"
+    [[ -d "$base" ]] || return 0
+    local slot
+    slot=$(ls -dt "$base"/*/* 2>/dev/null | head -1)
+    [[ -n "$slot" && -d "$slot/skills" ]] && echo "$slot/skills"
+  }
+
+  DESKTOP_SKILLS_DIR="$(_desktop_skills_dir)"
+  if [[ -n "$DESKTOP_SKILLS_DIR" ]]; then
+    desktop_skill_count=0
+    for skill_dir in "$REPO_DIR/skills"/*/; do
+      [[ -d "$skill_dir" ]] || continue
+      skill_name="$(basename "${skill_dir%/}")"
+      symlink_dir "$REPO_DIR/skills/$skill_name" "$DESKTOP_SKILLS_DIR/$skill_name"
+      desktop_skill_count=$((desktop_skill_count + 1))
+    done
+    ok "$desktop_skill_count skill dirs symlinked to Claude Desktop: $DESKTOP_SKILLS_DIR"
+  else
+    warn "Claude Desktop skills-plugin dir not found — open Claude Desktop, enable at least one skill, then rerun setup.sh"
+  fi
+fi
+
 # ── Codex skills ────────────────────────────────────────────────
 mkdir -p "$CODEX_DIR/skills"
 skill_count=0
