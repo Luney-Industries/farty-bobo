@@ -11,7 +11,7 @@ Shared configuration files for Claude Code, Claude Desktop, and Codex. Clone thi
 | Platform | Support |
 |----------|---------|
 | **Claude Code** | Full — skills, hooks, settings, MCP servers, commands |
-| **Claude Desktop** | Full — MCP servers via `claude_desktop_config.json` symlink; skills symlinked into active skills-plugin slot |
+| **Claude Desktop** | Full — MCP servers via `claude_desktop_config.json` symlink; `.skill` archives extracted into active skills-plugin slot |
 | **Codex** | Partial — skills load, but steps using `Agent`/`SendMessage`/`TaskCreate` silently no-op |
 
 ## Repo Structure
@@ -53,7 +53,7 @@ Shared configuration files for Claude Code, Claude Desktop, and Codex. Clone thi
    - Create `~/.claude` if needed
    - Symlink all config files and directories into `~/.claude`
    - Symlink `claude_desktop_config.json` into Claude Desktop's config dir (macOS)
-   - Symlink each skill dir into Claude Desktop's active skills-plugin slot (macOS; warns if not initialized yet)
+   - Extract each `.skill` archive from `claude-desktop/skills/` into Claude Desktop's active skills-plugin slot (macOS; warns if not initialized yet)
    - Create `.env` from `.env.sample` if it doesn't exist
    - Install the pinned node version via nvm and symlink it to `~/.local/bin`
 

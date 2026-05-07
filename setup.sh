@@ -199,12 +199,26 @@ _symlink_skills_to() {
   echo "$count"
 }
 
+# Extracts each .skill archive from claude-desktop/skills/ into $1.
+# .skill files are ZIP archives; unzip -qo overwrites existing extractions.
+_install_desktop_skills() {
+  local target="$1" skill_file skill_name count=0
+  for skill_file in "$REPO_DIR/claude-desktop/skills/"*.skill; do
+    [[ -f "$skill_file" ]] || continue
+    skill_name="$(basename "${skill_file%.skill}")"
+    unzip -qo "$skill_file" -d "$target"
+    ok "$skill_name → $target (extracted)"
+    count=$((count + 1))
+  done
+  echo "$count"
+}
+
 # ── Claude Desktop skills (macOS only) ──────────────────────────
 if [[ "$OSTYPE" == darwin* ]]; then
   DESKTOP_SKILLS_DIR="$(_desktop_skills_dir)" || true
   if [[ -n "$DESKTOP_SKILLS_DIR" ]]; then
-    count=$(_symlink_skills_to "$DESKTOP_SKILLS_DIR")
-    ok "$count skill dirs symlinked to Claude Desktop: $DESKTOP_SKILLS_DIR"
+    count=$(_install_desktop_skills "$DESKTOP_SKILLS_DIR")
+    ok "$count skills extracted to Claude Desktop: $DESKTOP_SKILLS_DIR"
   else
     warn "Claude Desktop skills-plugin dir not found — open Claude Desktop, enable at least one skill, then rerun setup.sh"
   fi
