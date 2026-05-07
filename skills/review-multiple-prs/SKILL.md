@@ -167,6 +167,8 @@ Valid `severity` values for findings: `"BLOCKER"`, `"HIGH"`, `"MEDIUM"`, `"LOW"`
 
 **Line number constraint:** every finding with a `line` value must reference a line that actually appears in the diff output from `gh pr diff`. Do not invent or approximate line numbers — a line number not in the diff will cause the GitHub API to reject the comment with a 422 error.
 
+**How to verify a line is in the diff:** Parse the `@@` hunk headers from `gh pr diff`. Each header has the form `@@ -old_start,old_count +new_start,new_count @@`. Walk through the hunk lines: skip `-` lines (deleted — LEFT side only); for each ` ` (context) or `+` (added) line, the RIGHT-side line number is `new_start + offset`, where `offset` counts only ` ` and `+` lines seen so far in that hunk (0-indexed). A finding is only valid if its `(path, line)` pair appears in this set. If you cannot confirm a line is in the diff, omit the `line` field entirely — it will land in the review body instead of as an inline comment.
+
 ## Step 3 — Review dimensions (per PR)
 
 Each agent evaluates:
@@ -349,7 +351,40 @@ After human approval, re-read the draft file. For each PR:
      ```
    This file is the persistence layer — future passes read it in Step 2 to avoid re-raising the same findings.
 
-3. **Post inline comments with the review event** using `gh api`. Use `side: "RIGHT"` for all inline comments. Only post comments for lines confirmed to exist in the diff. Use the content from the approved draft file — not the raw agent output. Skip any finding marked `IRRELEVANT`.
+3. **Pre-validate line numbers before posting.** For each PR that has inline comments, fetch its diff and build the valid RIGHT-side line set:
+
+   ```python
+   import re, subprocess
+
+   def valid_right_lines(repo, pr):
+       """Return a dict mapping path → set of valid RIGHT-side line numbers."""
+       diff = subprocess.check_output(["gh", "pr", "diff", str(pr), "-R", repo]).decode()
+       valid = {}
+       current_path = None
+       new_line = 0
+       for raw in diff.splitlines():
+           m = re.match(r'^\+\+\+ b/(.+)$', raw)
+           if m:
+               current_path = m.group(1)
+               valid.setdefault(current_path, set())
+               continue
+           m = re.match(r'^@@ -\d+(?:,\d+)? \+(\d+)', raw)
+           if m:
+               new_line = int(m.group(1))
+               continue
+           if current_path is None:
+               continue
+           if raw.startswith('+') or raw.startswith(' '):
+               valid[current_path].add(new_line)
+               new_line += 1
+           elif raw.startswith('-'):
+               pass  # LEFT side only — not a valid RIGHT-side line
+       return valid
+   ```
+
+   For each proposed inline comment, check if `(path, line)` is in the valid set. If it is → include it as an inline comment. If it is **not** → demote it: prepend `[{file}:{line}] ` to the comment body and include it in the PR-level review body text instead. This eliminates 422 rejections entirely.
+
+4. **Post inline comments with the review event** using `gh api`. Use `side: "RIGHT"` for all inline comments. Only post comments for lines confirmed in step 3. Use the content from the approved draft file — not the raw agent output. Skip any finding marked `IRRELEVANT`.
 
 ```
 gh api repos/{owner}/{repo}/pulls/{number}/reviews \
@@ -364,7 +399,7 @@ gh api repos/{owner}/{repo}/pulls/{number}/reviews \
 
 Where `{REVIEW_EVENT}` is the value read from the draft file's `Review Event` field for that PR (`APPROVE`, `REQUEST_CHANGES`, or `COMMENT`).
 
-3. **If a PR has no inline comments** but the review event is `APPROVE` or `REQUEST_CHANGES`, submit the review without comments:
+5. **If a PR has no inline comments** (or all were demoted to body text) and the review event is `APPROVE` or `REQUEST_CHANGES`, submit the review without comments:
 
 ```
 gh api repos/{owner}/{repo}/pulls/{number}/reviews \
