@@ -11,6 +11,10 @@
     "contentful": {
       "command": "/bin/bash",
       "args": ["-c", "~/.claude/scripts/contentful-mcp.sh"]
+    },
+    "datadog": {
+      "command": "/bin/bash",
+      "args": ["-c", "~/.claude/scripts/datadog-mcp.sh"]
     }
   },
   "preferences": {
