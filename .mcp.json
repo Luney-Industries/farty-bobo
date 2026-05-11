@@ -7,6 +7,10 @@
     "datadog": {
       "command": "/bin/bash",
       "args": ["-c", "~/.claude/scripts/datadog-mcp.sh"]
+    },
+    "posthog": {
+      "command": "/bin/bash",
+      "args": ["-c", "~/.claude/scripts/posthog-mcp.sh"]
     }
   }
 }
