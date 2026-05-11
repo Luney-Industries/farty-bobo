@@ -24,7 +24,7 @@ disable-model-invocation: false
 
    Write a markdown triage table to `/tmp/pr{PR_NUMBER}-copilot-triage.md` (where `{PR_NUMBER}` is the numeric PR ID) with columns: Thread ID (GitHub review thread ID as output by `list-unresolved-threads.sh`) | Comment summary | Your read | Decision (blank). Tell the human to fill in the Decision column (`implement` / `ignore` / `discuss`) and return it. **Do not implement or resolve any bot threads until the human returns the filled-in file.** If the human never returns the file or says to skip, proceed without addressing bot comments.
 
-5. Take actions based on human input from both approval gates. For discussion-type comments, post a reply in the PR thread rather than making a code change.
+5. Take actions based on human input from both approval gates. For discussion-type comments, post a reply **inside the review thread** (not as a top-level PR comment) using `gh api repos/{owner}/{repo}/pulls/{pull_number}/comments -X POST -f body="..." -f in_reply_to={comment_id}`, where `{comment_id}` is the numeric ID of the original inline comment (from the `gh api .../pulls/{pr}/comments` response). Never use `gh pr comment` for thread replies — that posts at the top level.
 
    > **Identity disclosure (required on every posted comment):** Any comment posted on behalf of the human MUST begin with: `_Posted by {your identity} on behalf of @<github-handle>._` (using your identity from CLAUDE.md), then the reply body. Never omit this line.
 
