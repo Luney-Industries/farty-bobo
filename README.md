@@ -130,6 +130,39 @@ Restart Claude Code, then run:
 
 It will show you the full catalog, let you pick what you want, download it to the right places, and for hooks ask whether to register them globally or scoped to the current project.
 
+## Installing gstack
+
+[gstack](https://github.com/garrytan/gstack) is a separate skill library that can coexist with Farty Bobo. Install it with the `gstack-` prefix so its skills don't overwrite any existing Farty Bobo skills.
+
+**Prerequisites:** [bun](https://bun.sh) must be installed (gstack builds a browser binary).
+
+```bash
+curl -fsSL https://bun.sh/install | bash
+```
+
+**1. Clone gstack as a sibling under `~/.claude/skills/`**
+
+```bash
+git clone https://github.com/garrytan/gstack ~/.claude/skills/gstack
+```
+
+**2. Run setup with the `--prefix` flag**
+
+```bash
+~/.claude/skills/gstack/setup --prefix
+```
+
+**Why `--prefix`:** Without it, gstack's `review` skill lands in `~/.claude/skills/review/` and overwrites Farty Bobo's existing `review` skill. With `--prefix`, everything installs under `gstack-*` names — separate namespace, no collisions.
+
+**What setup creates:**
+- `~/.claude/skills/gstack-{name}/` directories, each containing a symlinked `SKILL.md` pointing back into the cloned repo
+- `~/.claude/skills/gstack/browse/dist/browse` — the browser binary (requires bun + Playwright)
+- `~/.gstack/` — global state directory
+
+**Does NOT touch:** existing Farty Bobo skills, hooks, commands, or `~/.claude/settings.json`.
+
+Restart Claude Code after setup — `gstack:*` skills will appear in the catalog alongside `farty-bobo:*` ones.
+
 ## TODOs
 
 - https://github.com/simonw/claude-code-transcripts
