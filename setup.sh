@@ -6,15 +6,19 @@
 #   --links-only   Skip .env bootstrap and node/nvm install; just refresh symlinks.
 #                  Safe to run on every Claude Code session start as a self-heal.
 #   --quiet        Suppress success lines (warnings/errors still print).
+#   --gstack       Clone garrytan/gstack into skills/gstack and install its skills
+#                  under gstack-* names (off by default; requires bun).
 
 set -euo pipefail
 
 LINKS_ONLY=false
 QUIET=false
+GSTACK=false
 for arg in "$@"; do
   case "$arg" in
     --links-only) LINKS_ONLY=true ;;
     --quiet)      QUIET=true ;;
+    --gstack)     GSTACK=true ;;
     *) echo "Unknown flag: $arg" >&2; exit 2 ;;
   esac
 done
@@ -265,6 +269,35 @@ fi
 # ── Codex skills ────────────────────────────────────────────────
 mkdir -p "$CODEX_DIR/skills"
 _symlink_skills_to "$CODEX_DIR/skills"
+
+# ── gstack skills (opt-in via --gstack) ─────────────────────────
+# Clones garrytan/gstack into skills/gstack and runs its setup with --prefix
+# so all gstack skills land under gstack-* names (no collision with Farty Bobo).
+# Skipped when --links-only is passed (that mode only refreshes symlinks).
+if $GSTACK && $LINKS_ONLY; then
+  warn "gstack: skipped — --gstack has no effect with --links-only"
+elif $GSTACK; then
+  GSTACK_DIR="$REPO_DIR/skills/gstack"
+  if ! command -v bun >/dev/null 2>&1; then
+    err "gstack requires bun — install it first:"
+    err "  curl -fsSL https://bun.sh/install | bash"
+    err "Then rerun: setup.sh --gstack"
+  else
+    if [[ -d "$GSTACK_DIR/.git" ]]; then
+      printf "  Updating gstack...\n"
+      git -C "$GSTACK_DIR" pull --ff-only --quiet \
+        || { err "gstack: git pull failed — check $GSTACK_DIR manually"; exit 1; }
+    else
+      warn "gstack: cloning third-party repo from github.com/garrytan/gstack — review its code before running on sensitive machines"
+      git clone --quiet https://github.com/garrytan/gstack "$GSTACK_DIR" \
+        || { err "gstack: clone failed"; exit 1; }
+    fi
+    [[ -x "$GSTACK_DIR/setup" ]] \
+      || { err "gstack: $GSTACK_DIR/setup not found or not executable"; exit 1; }
+    "$GSTACK_DIR/setup" --prefix --quiet
+    ok "gstack skills installed with gstack-* prefix"
+  fi
+fi
 
 # ── Done ─────────────────────────────────────────────────────────
 if ! $QUIET; then

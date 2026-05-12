@@ -211,3 +211,7 @@ __marimo__/
 
 # Generated rotation scripts
 rotate-aws-keys.sh
+
+# gstack — cloned and installed on demand via setup.sh --gstack
+skills/gstack/
+skills/gstack-*/
