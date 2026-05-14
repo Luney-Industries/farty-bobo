@@ -27,8 +27,8 @@ set -euo pipefail
 ENV_FILE="$HOME/.claude/mcp.env"
 
 if [[ ! -f "$ENV_FILE" ]]; then
-  echo "ERROR: $ENV_FILE not found. See README for setup instructions." >&2
-  exit 1
+  echo "INFO: $ENV_FILE not found — <server-name> MCP server not configured on this machine." >&2
+  exit 0
 fi
 
 env_perms=$(stat -Lf "%OLp" "$ENV_FILE")

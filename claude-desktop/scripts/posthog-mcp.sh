@@ -4,8 +4,8 @@ set -euo pipefail
 ENV_FILE="$HOME/.claude/mcp.env"
 
 if [[ ! -f "$ENV_FILE" ]]; then
-  echo "ERROR: $ENV_FILE not found. See README for setup instructions." >&2
-  exit 1
+  echo "INFO: $ENV_FILE not found — posthog MCP server not configured on this machine." >&2
+  exit 0
 fi
 
 env_perms=$(stat -Lf "%OLp" "$ENV_FILE")
@@ -19,8 +19,8 @@ source "$ENV_FILE"
 set +a
 
 if [[ -z "${POSTHOG_MCP_API_KEY:-}" ]]; then
-  echo "ERROR: POSTHOG_MCP_API_KEY is not set in $ENV_FILE." >&2
-  exit 1
+  echo "INFO: POSTHOG_MCP_API_KEY is not set — posthog MCP server not configured on this machine." >&2
+  exit 0
 fi
 if [[ ! "${POSTHOG_MCP_API_KEY}" =~ ^[A-Za-z0-9_-]{32,}$ ]]; then
   echo "ERROR: POSTHOG_MCP_API_KEY does not look like a valid PostHog personal API key." >&2
@@ -39,8 +39,8 @@ if [[ -f "$VERSIONS_FILE" ]]; then
 fi
 
 if [[ -z "${MCP_REMOTE_VERSION:-}" ]]; then
-  echo "ERROR: MCP_REMOTE_VERSION is not set. Add it to claude-desktop/mcp-versions.env." >&2
-  exit 1
+  echo "INFO: MCP_REMOTE_VERSION is not set in mcp-versions.env — skipping posthog MCP server." >&2
+  exit 0
 fi
 if [[ ! "${MCP_REMOTE_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   echo "ERROR: MCP_REMOTE_VERSION='${MCP_REMOTE_VERSION}' is not a valid semver string." >&2

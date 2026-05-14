@@ -4,8 +4,8 @@ set -euo pipefail
 ENV_FILE="$HOME/.claude/mcp.env"
 
 if [[ ! -f "$ENV_FILE" ]]; then
-  echo "ERROR: $ENV_FILE not found. See README for setup instructions." >&2
-  exit 1
+  echo "INFO: $ENV_FILE not found — datadog MCP server not configured on this machine." >&2
+  exit 0
 fi
 
 env_perms=$(stat -Lf "%OLp" "$ENV_FILE")
@@ -18,17 +18,12 @@ set -a
 source "$ENV_FILE"
 set +a
 
-if [[ -z "${DD_API_KEY:-}" ]]; then
-  echo "ERROR: DD_API_KEY is not set in $ENV_FILE." >&2
-  exit 1
+if [[ -z "${DD_API_KEY:-}" || -z "${DD_APPLICATION_KEY:-}" ]]; then
+  echo "INFO: DD_API_KEY or DD_APPLICATION_KEY not set — datadog MCP server not configured on this machine." >&2
+  exit 0
 fi
 if [[ ! "${DD_API_KEY}" =~ ^[a-f0-9]{32}$ ]]; then
   echo "ERROR: DD_API_KEY does not look like a valid DataDog API key (expected 32 hex chars)." >&2
-  exit 1
-fi
-
-if [[ -z "${DD_APPLICATION_KEY:-}" ]]; then
-  echo "ERROR: DD_APPLICATION_KEY is not set in $ENV_FILE." >&2
   exit 1
 fi
 if [[ ! "${DD_APPLICATION_KEY}" =~ ^[A-Za-z0-9_-]{40,}$ ]]; then
@@ -48,8 +43,8 @@ if [[ -f "$VERSIONS_FILE" ]]; then
 fi
 
 if [[ -z "${MCP_REMOTE_VERSION:-}" ]]; then
-  echo "ERROR: MCP_REMOTE_VERSION is not set. Add it to claude-desktop/mcp-versions.env." >&2
-  exit 1
+  echo "INFO: MCP_REMOTE_VERSION is not set in mcp-versions.env — skipping datadog MCP server." >&2
+  exit 0
 fi
 if [[ ! "${MCP_REMOTE_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   echo "ERROR: MCP_REMOTE_VERSION='${MCP_REMOTE_VERSION}' is not a valid semver string." >&2
