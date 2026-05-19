@@ -93,6 +93,14 @@ disable-model-invocation: false
    - Apply the transition using `transitionJiraIssue` (or equivalent discovered tool).
    - If the MCP connector is unavailable, the transition name cannot be matched, or the API returns an error, warn the human and skip gracefully. Do not retry automatically.
 
+   **If the ticket is a Linear issue:**
+   - Confirm the target issue ID with the human before doing anything.
+   - Before fetching workflow states, call `get_issue` (or equivalent Linear MCP read tool) with the issue identifier to retrieve the `teamId`. Use that `teamId` when listing workflow states.
+   - Fetch available workflow states for the team using the Linear MCP (e.g., `list_workflow_states` or equivalent). Match the closest "In Review" or "In Progress" state — exact match first, then case-insensitive substring match. If ambiguous, surface options to the human.
+   - **Idempotency:** Fetch the issue's current state first. If already in a Review or downstream state, skip and inform the human.
+   - Use `mcp__linear__save_issue` with the issue `id` and the matched `state` (or `stateId`) to apply the transition.
+   - If Linear MCP is unavailable or the state cannot be matched, warn the human and skip gracefully.
+
 9. **Post a Decision Log comment on the Jira ticket.**
 
    **Prerequisites & safety checks — run these before doing anything else in this step:**
@@ -149,3 +157,14 @@ disable-model-invocation: false
    ```
 
    Only include sections that have content. Omit empty sections entirely.
+
+   **If the ticket is a Linear issue:**
+   - Same prerequisites and safety checks as the Jira flow (confirm ticket ID, check visibility, require explicit approval before posting).
+   - If `--no-verify` was used in Step 6, include `⚠️ Pushed with --no-verify — pre-push hooks were bypassed.` at the top of the comment body.
+   - **Idempotency:** Use the Linear MCP to list existing comments on the issue. Search for a comment whose body contains the header `## Decision Log`. If found, use `mcp__linear__save_comment` with the existing comment `id` to overwrite it. If not found, create a new comment (omit `id`).
+   - Use `mcp__linear__save_comment` with `issueId` set to the Linear issue identifier and `body` as the Decision Log in Markdown format (Linear supports Markdown natively — no ADF conversion needed).
+   - **Identity disclosure:** The comment body MUST begin with the Farty Bobo identity line (same requirement as the Jira flow).
+   - **Human approval gate:** Show the full draft and ask "Ready to post this Decision Log to `{issue-id}`? (yes / edit / skip)" — do not post without explicit confirmation.
+   - If Linear MCP is unavailable, warn the human and skip gracefully.
+
+   The Decision Log format is the same as the Jira version (same `## Decision Log` header, same sections) — just in Markdown instead of Jira wiki markup.
