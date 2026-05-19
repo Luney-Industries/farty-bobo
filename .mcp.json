@@ -1,5 +1,9 @@
 {
   "mcpServers": {
+    "linearb": {
+      "command": "/bin/bash",
+      "args": ["-c", "~/.claude/scripts/linearb-mcp.sh"]
+    },
     "contentful": {
       "command": "/bin/bash",
       "args": ["-c", "~/.claude/scripts/contentful-mcp.sh"]
