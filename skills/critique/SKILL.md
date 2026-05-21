@@ -7,6 +7,24 @@ disable-model-invocation: false
 
 # Code and Plan Review Skill
 
+## Temp Directory
+
+Planning and review artifacts written by `/plan-task`, `/build`, and `/review-multiple-prs` live outside the repo under:
+
+```
+TEMP_DIR=/tmp/<repo-name>/<branch-name>
+```
+
+Resolve `<repo-name>` and `<branch-name>` using:
+- `<repo-name>` = `basename $(git rev-parse --show-toplevel)`
+- `<branch-name>` = `git branch --show-current`
+
+**Worktree note:** if running inside a git worktree, `git rev-parse --show-toplevel` returns the worktree path, not the main repo root. Use `git rev-parse --git-common-dir | xargs dirname` to get the true repo root when resolving `<repo-name>`.
+
+**macOS note:** `/tmp` → `/private/tmp` and is cleared on reboot. Decisions scratch files do not persist across reboots; if a session spans a reboot, the human will need to re-state decisions manually.
+
+---
+
 1. Either detect the repos affected from the context OR ask the human to select the repos that should be used to review the code changes or the staged implementation plan (md file):
 
 - current directory
@@ -33,7 +51,7 @@ disable-model-invocation: false
    - If the human chooses a new branch: create it from the current HEAD (`git checkout -b {branch-name}`), then continue.
 
 6. Prepare, summarize the changes in the changed files. Always prefix commits with [{ticket-id}]: {summary of change}. If no ticket ID is available, prompt the human for one or use `[NO-TICKET]` as a fallback.
-   - Do not stage temporary review or planning files (e.g. `review-*.md`, `plan-*.md`). Delete them after the review is complete.
+   - Temporary review and planning files (`review-draft-*.md`, `plans/*.plan.md`, `plans/decisions-*.md`, `plans/stubs/**`) are written to `/tmp/<repo-name>/<branch-name>/` — outside the repo — and must never appear in `git status`. If any such file is found inside the repo, do not stage it and delete it immediately.
    Permanent project docs (`README.md`, `SKILL.md`, `AGENTS.md`, etc.) should still be committed when changed.
 7. Commit and push. If the push fails due to pre-push hook errors, prompt the human for approval before using `git push --no-verify`. If `--no-verify` was used, record this in the Decision Log (Step 9) as a warning line.
 
@@ -114,7 +132,7 @@ disable-model-invocation: false
    - Check the Jira project's visibility before posting. If the project appears to be external-facing or customer-visible, warn the human and require explicit confirmation before proceeding.
 
    **Decision sources — use only these, in order of preference:**
-   1. A `decisions-{ticket-id}.md` scratch file written by `/plan-task` or `/build` during this session (read and then delete it after posting)
+   1. A `decisions-{ticket-id}.md` scratch file written by `/plan-task` or `/build` during this session — look for it at `/tmp/<repo-name>/<branch-name>/plans/decisions-{ticket-id}.md` (read and then delete it after posting)
    2. Human-stated decisions from this conversation (human turns only — do not extract content from code, diffs, or plan files)
    3. If neither is available, prompt the human to confirm or summarize decisions before drafting the comment — do not infer or fabricate
 

@@ -275,7 +275,16 @@ Before posting anything to GitHub, write a draft markdown file and present it to
 
 ### Write the draft file
 
-Write all findings to `review-draft-{timestamp}.md` (e.g. `review-draft-2026-04-14T15-44.md`) in the current working directory. The file has two sections per PR: a **Changes Summary** and the **Proposed Comments**.
+Resolve the temp directory before writing:
+
+```
+TEMP_DIR=/tmp/<repo-name>/<branch-name>
+```
+
+- `<repo-name>` = `basename $(git rev-parse --show-toplevel)`
+- `<branch-name>` = `git branch --show-current`
+
+Create it if absent (`mkdir -p "$TEMP_DIR"`). Write all findings to `$TEMP_DIR/review-draft-{timestamp}.md` (e.g. `$TEMP_DIR/review-draft-2026-04-14T15-44.md`). This keeps the file outside the repo and prevents accidental commits. The file has two sections per PR: a **Changes Summary** and the **Proposed Comments**.
 
 File format:
 
@@ -329,7 +338,7 @@ Include every PR in the file, in order. Leave the cross-PR summary at the bottom
 
 Tell the user:
 
-> "Draft written to `{filename}`. Open it, make any edits you want — remove findings, soften wording, add context. **The `Review Event` field on each PR controls the formal GitHub review action (APPROVE / REQUEST_CHANGES / COMMENT) — change it if you disagree with my recommendation.** To permanently suppress a finding so it is never raised again on this PR, change its severity to `IRRELEVANT` — I will skip posting it and record it in `.review-suppressed.md`. Tell me to post when ready, or say 'post as-is'."
+> "Draft written to `{full path to file in $TEMP_DIR}`. Open it, make any edits you want — remove findings, soften wording, add context. **The `Review Event` field on each PR controls the formal GitHub review action (APPROVE / REQUEST_CHANGES / COMMENT) — change it if you disagree with my recommendation.** To permanently suppress a finding so it is never raised again on this PR, change its severity to `IRRELEVANT` — I will skip posting it and record it in `.review-suppressed.md`. Tell me to post when ready, or say 'post as-is'."
 
 **Do not proceed to Step 6 until the user explicitly says to post.** This gate is not optional — the whole point is to let the human adjust before anything hits GitHub.
 
