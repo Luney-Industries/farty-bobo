@@ -281,10 +281,10 @@ Resolve the temp directory before writing:
 TEMP_DIR=/tmp/<repo-name>/<branch-name>
 ```
 
-- `<repo-name>` = `basename $(git rev-parse --show-toplevel)`
+- `<repo-name>` = `basename "$(git rev-parse --show-toplevel)"`
 - `<branch-name>` = `git branch --show-current`
 
-Create it if absent (`mkdir -p "$TEMP_DIR"`). Write all findings to `$TEMP_DIR/review-draft-{timestamp}.md` (e.g. `$TEMP_DIR/review-draft-2026-04-14T15-44.md`). This keeps the file outside the repo and prevents accidental commits. The file has two sections per PR: a **Changes Summary** and the **Proposed Comments**.
+Create it if absent (`mkdir -p -m 700 "$TEMP_DIR"`). Write all findings to `$TEMP_DIR/review-draft-{timestamp}.md` (e.g. `$TEMP_DIR/review-draft-2026-04-14T15-44.md`). This keeps the file outside the repo and prevents accidental commits. The file has two sections per PR: a **Changes Summary** and the **Proposed Comments**.
 
 File format:
 

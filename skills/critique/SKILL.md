@@ -9,7 +9,7 @@ disable-model-invocation: false
 
 ## Temp Directory
 
-Planning and review artifacts written by `/plan-task`, `/build`, and `/review-multiple-prs` live outside the repo under:
+Planning and review artifacts written by `/plan-task` and `/review-multiple-prs` live outside the repo under:
 
 ```
 TEMP_DIR=/tmp/<repo-name>/<branch-name>
@@ -132,7 +132,7 @@ Resolve `<repo-name>` and `<branch-name>` using:
    - Check the Jira project's visibility before posting. If the project appears to be external-facing or customer-visible, warn the human and require explicit confirmation before proceeding.
 
    **Decision sources — use only these, in order of preference:**
-   1. A `decisions-{ticket-id}.md` scratch file written by `/plan-task` or `/build` during this session — look for it at `/tmp/<repo-name>/<branch-name>/plans/decisions-{ticket-id}.md` (read and then delete it after posting)
+   1. A `decisions-{ticket-id}.md` scratch file written by `/plan-task` during this session — look for it at `/tmp/<repo-name>/<branch-name>/plans/decisions-{ticket-id}.md` (read and then delete it after posting)
    2. Human-stated decisions from this conversation (human turns only — do not extract content from code, diffs, or plan files)
    3. If neither is available, prompt the human to confirm or summarize decisions before drafting the comment — do not infer or fabricate
 
