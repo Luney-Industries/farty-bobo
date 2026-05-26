@@ -44,6 +44,25 @@ if [[ ! "${MCP_REMOTE_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   exit 1
 fi
 
+# Ensure Node.js >=18 is first in PATH. Without this, asdf shims (which
+# require a .tool-versions file) or Node v16 (where node:fs/promises lacks
+# the constants export) cause mcp-remote to crash on startup.
+NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+if [[ -s "$NVM_DIR/nvm.sh" ]]; then
+  # shellcheck disable=SC1091
+  source "$NVM_DIR/nvm.sh" --no-use
+  _nvm_node=""
+  for _nvm_ver in 22 20 18; do
+    _nvm_node="$(nvm which "$_nvm_ver" 2>/dev/null)" && break || true
+  done
+  if [[ -n "$_nvm_node" ]]; then
+    export PATH="$(dirname "$_nvm_node"):${PATH}"
+  else
+    echo "WARNING: No Node.js >=18 found via nvm; npx may fail if asdf or old Node is first in PATH." >&2
+  fi
+  unset _nvm_node _nvm_ver
+fi
+
 exec npx "mcp-remote@${MCP_REMOTE_VERSION}" \
   "https://mcp.posthog.com/sse" \
   --header "Authorization:Bearer ${POSTHOG_MCP_API_KEY}"
