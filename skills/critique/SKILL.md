@@ -61,17 +61,7 @@ Resolve `<repo-name>` and `<branch-name>` using:
 
    **If PR creation failed, stop here — skip the reviewer fallback chain, skip Steps 8 and 9, and warn the human.**
 
-   Otherwise, capture the PR number from the `gh pr create` output (it appears in the PR URL, e.g. `https://github.com/{owner}/{repo}/pull/{number}`). Then request an automated review using the following fallback chain:
-
-   **Automated reviewer fallback chain:**
-   1. Attempt to add Copilot as a reviewer: `gh pr edit {number} --add-reviewer "Copilot"`
-   2. If that command exits non-zero **and** the output contains a string indicating Copilot is not configured on this repo or org (e.g. "Could not resolve to a User", "not found", "is not a collaborator", "does not have access") — these indicate a permanent configuration state, not a transient failure — fall back to posting a `@codex review` trigger comment:
-      ```
-      gh pr comment {number} --body "@codex review"
-      ```
-      Note: this comment is a best-effort trigger. It only works if the Codex bot is installed and enabled on the repo. The `gh` command will exit 0 regardless — there is no confirmation that a review was actually queued. Inform the human of this uncertainty.
-   3. If Step 1 fails for any other reason (network error, auth failure, rate limit, unexpected output), do **not** fall through to Step 2. Surface the error to the human and ask how to proceed.
-   4. If both Steps 1 and 2 fail, warn the human that no automated reviewer could be added and proceed.
+   Otherwise, capture the PR number from the `gh pr create` output (it appears in the PR URL, e.g. `https://github.com/{owner}/{repo}/pull/{number}`). Then invoke `/request-github-review` with the PR number to request an automated review.
 
    *(End of Step 7a)*
 
