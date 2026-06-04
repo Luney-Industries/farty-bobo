@@ -133,7 +133,8 @@
     "failIfUnavailable": false
   },
   "alwaysThinkingEnabled": true,
-  "effortLevel": "high",
+  "effortLevel": "low",
+  "skipWorkflowUsageWarning": true,
   "theme": "dark",
   "skipAutoPermissionPrompt": true,
   "voiceEnabled": true,

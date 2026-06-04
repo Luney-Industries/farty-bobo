@@ -55,57 +55,15 @@ Resolve `<repo-name>` and `<branch-name>` using:
    Permanent project docs (`README.md`, `SKILL.md`, `AGENTS.md`, etc.) should still be committed when changed.
 7. Commit and push. If the push fails due to pre-push hook errors, prompt the human for approval before using `git push --no-verify`. If `--no-verify` was used, record this in the Decision Log (Step 9) as a warning line.
 
-7a. **Open a draft pull request.** After a successful push, open a **draft** PR using `gh pr create --draft` (or equivalent).
+7a. **Open a draft pull request.** After a successful push, open a **draft** PR using `gh pr create --draft --assignee @me` (or equivalent). The `--assignee @me` flag assigns the current authenticated GitHub user automatically.
 
    **PR body:** Read `.github/PULL_REQUEST_TEMPLATE.md` from the repo root and use it as the base for the PR body — fill in the Summary and Test plan sections with content relevant to the change. If the file does not exist, use a bare `## Summary` / `## Test plan` structure. Never append Anthropic or Claude Code branding lines (e.g. `🤖 Generated with Claude Code`) to the PR body.
 
    **If PR creation failed, stop here — skip the reviewer fallback chain, skip Steps 8 and 9, and warn the human.**
 
-   Otherwise, capture the PR number from the `gh pr create` output (it appears in the PR URL, e.g. `https://github.com/{owner}/{repo}/pull/{number}`). Then invoke `/request-github-review` with the PR number to request an automated review.
+   Otherwise, capture the PR number from the `gh pr create` output (it appears in the PR URL, e.g. `https://github.com/{owner}/{repo}/pull/{number}`). Then invoke `/request-github-review` with the PR number. `/request-github-review` will request automated review and then run the bot feedback loop — waiting for CI and bot reviews, addressing comments, resolving CI failures, and marking draft PRs ready for review when done.
 
    *(End of Step 7a)*
-
-7b. **Bot review loop (draft PRs only).**
-
-   This step only applies when the PR was opened as a **draft**. If the PR is not a draft, skip to Step 8. **If `/critique` was invoked recursively from within this loop (e.g., by `/address-pr-comments` or `/resolve-ci-failures`), skip Step 7b entirely** — the bot loop is already running in the parent invocation.
-
-   After the draft PR is open, wait for automated reviewers (bots, linters, CI) to post their feedback:
-
-   1. **Estimate the wait time** based on PR size and recent CI history:
-
-      a. **Measure the PR size:**
-         ```
-         gh pr diff {number} --patch | wc -l
-         ```
-         Classify: small (< 200 lines), medium (200–800 lines), large (> 800 lines).
-
-      b. **Sample recent CI run durations** from the last 5 completed workflow runs on the repo's default branch:
-         ```
-         gh run list --branch {default_branch} --status completed --limit 5 --json databaseId,updatedAt,createdAt
-         ```
-         For each run, compute `duration = updatedAt - createdAt` in minutes. Take the **median** as the baseline CI duration.
-
-      c. **Compute the wait estimate:**
-         - Start with the median CI duration from (b). If no runs are found, use 5 minutes as the fallback.
-         - Add a buffer for bot reviewers (linters, code scanners): +2 minutes for small PRs, +3 for medium, +5 for large.
-         - Cap the total at 15 minutes — if the estimate exceeds this, use 15 minutes. Anything longer and the human should be deciding.
-         - Floor at 3 minutes — bots need at least this long to spin up.
-
-      d. **Announce the estimate:** "Based on recent CI runs (median: {N}min) and PR size ({size}), waiting {estimate} minutes for bot reviews on {PR_URL}. Say 'skip' to proceed immediately or give me a different number."
-         - If the human responds with a number, use that instead.
-         - If the human says 'skip', proceed immediately to step 2.
-         - Otherwise, use the computed estimate.
-
-      e. Use `ScheduleWakeup` with the final delay (converted to seconds) to set the timer.
-
-   2. **When the timer fires, run the feedback loop:**
-      - Invoke `/address-pr-comments` — this reads all unresolved comments (including bot comments) and addresses actionable ones. If code changes are made, `/address-pr-comments` will internally invoke `/critique` to commit and push fixes.
-      - Invoke `/resolve-ci-failures` — this checks CI status, investigates failures, and fixes them. If fixes are made, it will internally invoke `/critique` to commit and push.
-
-   3. **Mark the PR as ready for review:**
-      - Run `gh pr ready {number}` to convert the draft PR to ready-for-review status.
-      - Announce to the human: "PR {PR_URL} is now marked ready for human review. Bot feedback has been addressed and CI is passing."
-      - If CI is still failing after `/resolve-ci-failures` (e.g., infrastructure issues that couldn't be auto-fixed), warn the human instead: "PR {PR_URL} is marked ready for review, but CI still has failures that need manual attention: {summary of remaining failures}."
 
 8. **Transition the Jira ticket to Review status.**
 
