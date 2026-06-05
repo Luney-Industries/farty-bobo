@@ -88,7 +88,6 @@ Assign each finding a severity:
 | **MEDIUM** | Real improvement but not blocking. Author should address or explicitly accept the risk. |
 | **LOW / NIT** | Style, naming, minor cleanup. Optional. Don't block merge over these. |
 | **QUESTION** | Unclear intent — ask for clarification before judging. |
-| **PRAISE** | Something done especially well. Say it. |
 
 Do not manufacture findings to look thorough. If the code is good, say so.
 
