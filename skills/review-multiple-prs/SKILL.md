@@ -1,12 +1,12 @@
 ---
 name: review-multiple-prs
-description: Review multiple pull requests in parallel by spinning up one review agent per PR, then consolidating findings into a single cross-PR summary. Use this when reviewing 2+ PRs that need to be understood together — stacked, parallel feature work, or a release batch.
+description: Review one or more pull requests by spinning up one review agent per PR, then consolidating findings into a single cross-PR summary. Use this when reviewing 1+ PRs that need to be understood together — stacked, parallel feature work, or a release batch.
 disable-model-invocation: false
 ---
 
 # Review Multiple PRs (Parallel)
 
-Use this skill when the user provides 2 or more PR numbers or URLs to review. Unlike `/code-review` (which processes PRs sequentially), this skill fans out to parallel agents — one per PR — then merges their findings into a unified summary.
+Use this skill when the user provides one or more PR numbers or URLs to review. Unlike `/code-review` (which processes PRs sequentially), this skill fans out to parallel agents — one per PR — then merges their findings into a unified summary.
 
 ---
 
@@ -20,7 +20,6 @@ Use this skill when the user provides 2 or more PR numbers or URLs to review. Un
 
 - Collect all PR numbers / URLs from the user's message.
 - If no PRs are specified, run the **PR Discovery** flow below before proceeding.
-- If fewer than 2 PRs are provided (and discovery was not run), redirect the user to `/code-review` instead.
 
 ### PR Discovery (when no PRs are specified)
 
@@ -90,7 +89,8 @@ Use `gh` and the GitHub search API to find open PRs by the user's teammates that
   | **Parallel** | Multiple PRs for the same feature, split by concern | Review independently; flag integration risks |
   | **Batch / Unrelated** | Unrelated changes reviewed together (e.g. release batch) | Review fully independently |
 
-- State your interpretation to the user and **wait for explicit confirmation before fanning out**. Do not proceed until the user confirms or corrects the relationship classification. A misclassified stacked set will silently skip context forwarding — this confirmation gate is not optional.
+- **If only one PR was provided**, skip the relationship classification entirely and proceed directly to Step 2.
+- Otherwise, state your interpretation to the user and **wait for explicit confirmation before fanning out**. Do not proceed until the user confirms or corrects the relationship classification. A misclassified stacked set will silently skip context forwarding — this confirmation gate is not optional.
 
 ## Step 2 — Fan out: one agent per PR
 
@@ -319,20 +319,20 @@ File format:
 
 ---
 
-## Cross-PR Summary (for human reviewer only — NOT posted to GitHub)
+## Summary (for human reviewer only — NOT posted to GitHub)
 
-> **Relationship:** Stacked / Parallel / Batch
-> **Overall:** ALL APPROVE / MIXED / ALL REQUEST_CHANGES
+> **Overall:** APPROVE / REQUEST_CHANGES / COMMENT
 >
 > | PR | Title | Review Event | Blockers | Highs |
 > |----|-------|-------------|----------|-------|
 > | #123 | ... | APPROVE | 0 | 1 |
-> | #124 | ... | REQUEST_CHANGES | 1 | 0 |
 >
-> **Integration Concerns:** ...
+> **Relationship:** Stacked / Parallel / Batch  ← _omit this line when reviewing a single PR_
+>
+> **Integration Concerns:** ...  ← _omit this line when reviewing a single PR_
 ```
 
-Include every PR in the file, in order. Leave the cross-PR summary at the bottom.
+Include every PR in the file, in order. Leave the summary at the bottom. **When reviewing a single PR, omit the Relationship and Integration Concerns lines — they are meaningless without multiple PRs.**
 
 ### Present and wait for approval
 
@@ -436,7 +436,7 @@ After posting all reviews:
 
 - Report the per-PR review events submitted (APPROVE / REQUEST_CHANGES / COMMENT) and total finding counts.
 - Present the cross-PR summary directly to the user in the conversation (it was already in the draft file; relay the key points).
-- Call out any cross-PR integration concerns surfaced.
+- If multiple PRs were reviewed, call out any cross-PR integration concerns surfaced.
 - If CI failures were introduced by any PR, name the PR and suggest `/resolve-ci-failures`.
 - If any PRs have BLOCKERs or HIGHs, list the top concerns briefly.
 - This skill covers one review pass. Re-invoke after the author pushes new commits.
