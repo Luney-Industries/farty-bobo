@@ -22,7 +22,19 @@ disable-model-invocation: false
    - **Domain/content suggestion**: wording, thresholds, naming, business logic — domain experts (vets, PMs, etc.) outrank bots. Flag for human to decide; do NOT implement without explicit approval.
    - **Ignorable**: misunderstanding of project structure, ticket hierarchy, or context — recommend ignoring.
 
-   Write a markdown triage table to `/tmp/pr{PR_NUMBER}-copilot-triage.md` (where `{PR_NUMBER}` is the numeric PR ID) with columns: Thread ID (GitHub review thread ID as output by `list-unresolved-threads.sh`) | Comment summary | Your read | Decision (blank). Tell the human to fill in the Decision column (`implement` / `ignore` / `discuss`) and return it. **Do not implement or resolve any bot threads until the human returns the filled-in file.** If the human never returns the file or says to skip, proceed without addressing bot comments.
+   Write a markdown triage file to `/tmp/{PR_NUMBER}.md` (where `{PR_NUMBER}` is the numeric PR number from the PR URL or `gh pr view` output). If the file already exists from a prior run, overwrite it entirely. The file MUST contain a table with these columns:
+
+   | Author | Thread ID | File:Line | Summary | Agent Assessment | Decision |
+   |--------|-----------|-----------|---------|------------------|----------|
+
+   - **Author**: the GitHub login of the comment author (bot name, username, etc.)
+   - **Thread ID**: the GitHub review thread ID as output by `list-unresolved-threads.sh`
+   - **File:Line**: path and line number the comment is anchored to
+   - **Summary**: what the comment is actually saying, in plain English, one sentence
+   - **Agent Assessment**: your classification (Stale / Valid code bug / Domain suggestion / Ignorable) and a one-sentence reason
+   - **Decision**: leave this column **blank** — the human fills it in. Valid values the human may enter: `implement` | `ignore` | `discuss` | `defer`
+
+   Tell the human the file path and instruct them to open it, fill in the Decision column, and return it. **Do not implement or resolve any bot threads until the human returns the filled-in file.** If the human never returns the file or says to skip, proceed without addressing bot comments.
 
 5. Take actions based on human input from both approval gates. For discussion-type comments, post a reply **inside the review thread** (not as a top-level PR comment) using `gh api repos/{owner}/{repo}/pulls/{pull_number}/comments -X POST -f body="..." -f in_reply_to={comment_id}`, where `{comment_id}` is the numeric ID of the original inline comment (from the `gh api .../pulls/{pr}/comments` response). Never use `gh pr comment` for thread replies — that posts at the top level.
 
