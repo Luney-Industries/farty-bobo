@@ -36,6 +36,13 @@ disable-model-invocation: false
 
    Tell the human the file path and instruct them to open it, fill in the Decision column, and return it. **Do not implement or resolve any bot threads until the human returns the filled-in file.** If the human never returns the file or says to skip, proceed without addressing bot comments.
 
+   Once the human returns the filled-in file, act on each thread according to its Decision value:
+
+   - **`implement`**: Make the code change. Then reply inside the thread referencing the commit SHA where the fix landed, and resolve the thread.
+   - **`ignore`**: Reply inside the thread explaining that the suggestion was reviewed and intentionally not adopted (one sentence why). Then resolve the thread.
+   - **`discuss`**: Reply inside the thread with the agent's assessment and any relevant context to move the conversation forward. Do **not** resolve — leave the thread open for human follow-up.
+   - **`defer`**: Reply inside the thread explaining that the suggestion is valid but being deferred (include a ticket link or note if one exists). Then resolve the thread.
+
 5. Take actions based on human input from both approval gates. For discussion-type comments, post a reply **inside the review thread** (not as a top-level PR comment) using `gh api repos/{owner}/{repo}/pulls/{pull_number}/comments -X POST -f body="..." -f in_reply_to={comment_id}`, where `{comment_id}` is the numeric ID of the original inline comment (from the `gh api .../pulls/{pr}/comments` response). Never use `gh pr comment` for thread replies — that posts at the top level.
 
    > **Identity disclosure (required on every posted comment):** Any comment posted on behalf of the human MUST begin with: `_Posted by {your identity} on behalf of @<github-handle>._` (using your identity from CLAUDE.md), then the reply body. Never omit this line.
