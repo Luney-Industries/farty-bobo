@@ -101,6 +101,17 @@ How do you want to work on this?
 
 Record the chosen strategy (worktree path or branch name) in the decisions scratch file (Step 9).
 
+### 2c. Move Ticket to In Progress (if Linear ticket available)
+
+If a Linear issue was fetched in Step 2:
+1. Extract `team.id` from the issue object returned in Step 2.
+2. Call `mcp__linear__list_issue_statuses` with that `teamId` to retrieve all workflow states for the team.
+3. Find the state whose `stateType` equals `"started"` (Linear's internal enum for in-progress states). If multiple `started`-type states exist, prefer the one whose name most closely matches "In Progress" (case-insensitive).
+4. **Idempotency:** if the issue's current `stateType` is already `"started"`, skip silently.
+5. Call `mcp__linear__save_issue` with the issue `id` and the matched `stateId`.
+
+If the Linear MCP is unavailable, or no `started`-type state exists for the team, skip silently — do not block planning.
+
 ### 3. Clarify Requirements
 
 Ask the human targeted clarifying questions to resolve ambiguity. Proceed once **all five** of the following are true — do not loop indefinitely:
