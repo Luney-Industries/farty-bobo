@@ -101,16 +101,16 @@ How do you want to work on this?
 
 Record the chosen strategy (worktree path or branch name) in the decisions scratch file (Step 9).
 
-### 2c. Move Ticket to In Progress (if Linear ticket available)
+### 2c. Move Ticket to In Progress
 
-If a Linear issue was fetched in Step 2:
-1. Extract `team.id` from the issue object returned in Step 2.
-2. Call `mcp__linear__list_issue_statuses` with that `teamId` to retrieve all workflow states for the team.
-3. Find the state whose `stateType` equals `"started"` (Linear's internal enum for in-progress states). If multiple `started`-type states exist, prefer the one whose name most closely matches "In Progress" (case-insensitive).
-4. **Idempotency:** if the issue's current `stateType` is already `"started"`, skip silently.
-5. Call `mcp__linear__save_issue` with the issue `id` and the matched `stateId`.
+If a ticket was fetched in Step 2, use whatever MCP connector is available for that ticket system (Linear, Jira, or other) to transition the ticket to its "In Progress" equivalent status:
 
-If the Linear MCP is unavailable, or no `started`-type state exists for the team, skip silently — do not block planning.
+- Discover available workflow states from the connector — use whichever tool the MCP exposes for listing statuses/transitions.
+- Pick the state that best represents "in progress" work (e.g. "In Progress", "Started", "In Development"). Prefer an exact match; fall back to the closest semantic equivalent.
+- **Idempotency:** if the ticket is already in an in-progress or further-downstream state, skip silently.
+- Apply the transition using the connector's update/transition tool.
+
+If the MCP connector is unavailable, the ticket system is unsupported, or no suitable state exists, skip silently — do not block planning.
 
 ### 3. Clarify Requirements
 
