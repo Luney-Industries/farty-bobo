@@ -101,6 +101,17 @@ How do you want to work on this?
 
 Record the chosen strategy (worktree path or branch name) in the decisions scratch file (Step 9).
 
+### 2c. Move Ticket to In Progress
+
+If a ticket was fetched in Step 2, use whatever MCP connector is available for that ticket system (Linear, Jira, or other) to transition the ticket to its "In Progress" equivalent status:
+
+- Discover available workflow states from the connector — use whichever tool the MCP exposes for listing statuses/transitions.
+- Pick the state that best represents "in progress" work (e.g. "In Progress", "Started", "In Development"). Prefer an exact match; fall back to the closest semantic equivalent.
+- **Idempotency:** if the ticket is already in an in-progress or further-downstream state, skip silently.
+- Apply the transition using the connector's update/transition tool.
+
+If the MCP connector is unavailable, the ticket system is unsupported, or no suitable state exists, skip silently — do not block planning.
+
 ### 3. Clarify Requirements
 
 Ask the human targeted clarifying questions to resolve ambiguity. Proceed once **all five** of the following are true — do not loop indefinitely:
