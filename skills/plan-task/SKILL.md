@@ -255,6 +255,42 @@ This file lives in `$TEMP_DIR` — outside the repo — so it can never be accid
 
 ### 10. Commit and Hand Off
 
-After approval and a clean security audit:
+After plan approval (Step 8) and a clean security audit (this is NOT build authorization — the Build Gate below still applies):
 1. Commit only the acceptance test file to the current feature branch. Show the diff to the human before committing. Do not stage the plan file, dotfiles, secrets, or the decisions scratch file (all are in `$TEMP_DIR`, outside the repo).
-2. Pass a summary of the task details, the plan file path (`$TEMP_DIR/plans/...`), the acceptance test file path, the decisions scratch file path (`$TEMP_DIR/plans/decisions-*.md`), and all generated artifacts to the `/build` skill.
+2. **STOP. Do not invoke `/build` yet.** Before handing off, you MUST obtain an explicit, unambiguous go-ahead from the human (see "Build Gate" below).
+3. Only once the Build Gate is satisfied: pass a summary of the task details, the plan file path (`$TEMP_DIR/plans/...`), the acceptance test file path, the decisions scratch file path (`$TEMP_DIR/plans/decisions-*.md`), and all generated artifacts to the `/build` skill.
+
+---
+
+## Build Gate — MANDATORY, NON-NEGOTIABLE
+
+`/build` is destructive: it writes production code. You are FORBIDDEN from invoking `/build` until the human gives an explicit, affirmative instruction to start building. This gate applies no matter how "done" planning feels and no matter how obvious the next step seems.
+
+**A question from the human is a question — not a build authorization.** This is the single most common failure mode. When the human asks something like:
+- "Where is the plan.md file?"
+- "Is the plan ready?"
+- "What did you decide about X?"
+- "Did the tests get committed?"
+
+...your ONLY job is to **answer that question** and then **wait**. You do NOT confirm artifacts, declare planning complete, and leap into `/build`. Answering a question and starting to build are two different acts; the human asking a question has authorized exactly one of them — the answer.
+
+**After answering any human question during Step 10, you MUST ask the explicit build-authorization question before taking any further action** — even if you believe authorization was already given. Do not skip this. Ask: "Planning is complete and artifacts are on disk. Do you want me to kick off `/build` now?" Then wait.
+
+**Forbidden reasoning** (if you catch yourself thinking any of this, STOP):
+- "Everything from the planning pass is already on disk — I don't need to re-plan, so let me hand off to `/build`."
+- "The artifacts exist, so I'll confirm them and proceed to build."
+- "The human seems ready, so I'll kick off the build."
+- Any chain that ends in `/build` without the human having explicitly said one of the canonical phrases listed below.
+
+**What counts as a valid build authorization** — the human must say one of these phrases (or a close paraphrase that a reasonable person would interpret as a direct command to start building):
+- "Go build it" / "Start the build" / "Run /build" / "Implement it" / "Ship it" / "Approved, proceed to build."
+- If the phrasing is ambiguous, ask for confirmation rather than assuming equivalence.
+
+**What does NOT count** (never treat these as authorization to build):
+- Any question, however rhetorical.
+- Bare affirmatives: "yes", "yep", "sure", "ok", "correct", "confirmed", "proceed" — UNLESS they are a direct response to the explicit question "Do you want me to kick off `/build` now?"
+- Approval of the *plan* or *tests* in Step 8 (that approves the plan, not the build).
+- Silence, "looks good", "nice" in response to your status update.
+- Your own assessment that the work is ready.
+
+**Default rule: when in doubt, you are not authorized.** Ask explicitly and wait.
