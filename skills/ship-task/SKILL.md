@@ -97,15 +97,13 @@ Skip this step entirely if `TICKET_ID=none`.
 
 ### Linear
 
-Fetch the issue using `mcp__linear__get_issue` (or `mcp__claude_ai_Linear__get_issue`) to get the `teamId`. Then fetch available workflow states for that team and find the terminal state whose name matches "Done", "Completed", "Shipped", or "Closed" (exact match first, then case-insensitive substring).
+Discover Linear MCP tools at runtime. Look for tools matching `get_issue`, `list_workflow_states` (or equivalent), and `save_issue` / `update_issue`.
+
+Fetch the issue to get the `teamId`. Then fetch available workflow states for that team and find the terminal state whose name matches "Done", "Completed", "Shipped", or "Closed" (exact match first, then case-insensitive substring).
 
 **Idempotency:** If the issue is already in a terminal state, skip the transition and inform the human.
 
-```
-mcp__linear__save_issue  (or mcp__claude_ai_Linear__save_issue)
-  issueId: <id>
-  stateId: <done-state-id>
-```
+Use the discovered save/update tool to apply the state change, passing the issue ID and the matched state ID.
 
 ### Jira
 
