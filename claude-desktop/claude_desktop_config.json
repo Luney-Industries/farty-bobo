@@ -23,6 +23,10 @@
     "posthog": {
       "command": "/bin/bash",
       "args": ["-c", "~/.claude/scripts/posthog-mcp.sh"]
+    },
+    "yaz": {
+      "command": "/bin/bash",
+      "args": ["-c", "~/.claude/scripts/yaz-mcp.sh"]
     }
   },
   "preferences": {

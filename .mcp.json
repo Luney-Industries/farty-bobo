@@ -19,6 +19,10 @@
     "honeybadger": {
       "command": "/bin/bash",
       "args": ["-c", "~/.claude/scripts/honeybadger-mcp.sh"]
+    },
+    "yaz": {
+      "command": "/bin/bash",
+      "args": ["-c", "~/.claude/scripts/yaz-mcp.sh"]
     }
   }
 }

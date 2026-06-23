@@ -50,6 +50,14 @@ ok "~/.claude exists"
 symlink_file() {
   local src="$1" dst="$2"
   [[ -f "$src" ]] || { err "Source not found: $src"; exit 1; }
+  if [[ -L "$dst" ]]; then
+    rm -f "$dst"
+  elif [[ -f "$dst" ]]; then
+    local backup="$dst.backup-$(date +%Y%m%d%H%M%S)"
+    cp "$dst" "$backup"
+    warn "$(basename "$dst"): real file found — backed up to $backup before symlinking"
+    rm -f "$dst"
+  fi
   ln -sf "$src" "$dst" || { err "Failed to create symlink: $dst"; exit 1; }
   ok "$(basename "$dst") → $src"
 }
