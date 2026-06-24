@@ -147,5 +147,6 @@
   "feedbackSurveyState": {
     "lastShownTime": 1754572875128
   },
-  "knownMarketplaces": []
+  "knownMarketplaces": [],
+  "tui": "fullscreen"
 }
