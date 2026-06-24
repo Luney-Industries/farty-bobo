@@ -1,6 +1,6 @@
 ---
 name: yaz
-description: Help users of the Yaz connector explore org designs, images, and product visuals. Accepts an org name, design query, or product filter and returns structured results with context. Also supports comparing designs, auditing image coverage, and spotting gaps in product imagery.
+description: Help users of the Yaz connector explore org designs, images, and product visuals. Accepts an org name, design query, or product filter and returns structured results with context. Also supports auditing image coverage and spotting gaps in product imagery.
 ---
 
 # Yaz Skill
@@ -29,6 +29,8 @@ Parse the intent from args or conversation context. If ambiguous, make the most 
 
 Use `mcp__yaz__search_orgs` with a partial name from the request. If multiple orgs match, present them as a short numbered list and ask the human to pick. If exactly one matches, proceed without asking.
 
+If no org is found, tell the human and stop — do not guess or substitute.
+
 ## 3. Route to Intent
 
 Determine the primary intent before fetching anything beyond the org:
@@ -36,13 +38,13 @@ Determine the primary intent before fetching anything beyond the org:
 - **Product image query** (human asks about specific products, colors, or product-level images) → skip to **4c** directly using the org ID — do not call `get_org_designs` first
 - **Everything else** → call `mcp__yaz__get_org_designs` with the org ID, then route to the appropriate section below
 
-When fetching designs, apply filters if the request implies them:
+When fetching designs, apply filters if the request implies them. Accepted filter values:
 - `approval_status`: `approved`, `to_review`, `in_progress`, `to_rework`
 - `active_status`: `active`, `inactive`, `amazon-only`
 
-## 4. Handle the Intent
+If `get_org_designs` returns zero results, tell the human — don't silently render an empty table.
 
-Branch based on what the human wants:
+## 4. Handle the Intent
 
 ### 4a. Browse Designs
 
@@ -64,7 +66,7 @@ If there are more than 15 designs, group by approval status and show counts per 
 
 When the human picks a design (or the request is for a specific design's files), use `mcp__yaz__get_org_images` with the `org_design_id`.
 
-Optionally filter by `image_type`: `svg`, `base`, `embroidery_emb`, `embroidery_dst`.
+Optionally filter by `image_type`. Accepted values: `svg`, `base`, `embroidery_emb`, `embroidery_dst`.
 
 Show results:
 
@@ -84,10 +86,10 @@ If no images exist for a type the human asked about, call it out explicitly.
 
 When the human wants to see what products carry a design or filter by product attributes, use `mcp__yaz__get_org_product_images`.
 
-Key filter rules (enforce these strictly — do NOT explain them to the human unless they ask):
+Key filter rules — and tell the human about these when a search returns empty or unexpected results:
 - Use `product_name` for style/brand keywords (e.g. "polo", "jersey tank")
 - Use `product_color` for color (e.g. "black", "heather navy") — SEPARATE from `product_name`
-- Never combine style + color in `product_name` — they will NOT match
+- Never combine style + color in a single `product_name` value — it will not match
 - All filters are case-insensitive substring matches
 - Timestamp filters are ISO 8601 UTC
 
@@ -112,14 +114,17 @@ Filtered by: {applied filters}
 
 If the result set is large (>20 images), summarize counts first and ask if they want the full list or a more specific filter.
 
+If results are empty, explain why the filter may have missed (e.g. style+color combined in one field) and suggest a corrected query.
+
 ### 4d. Audit / Gap Analysis
 
 When the human asks to find missing images, coverage gaps, or incomplete designs:
 
 1. Fetch all designs for the org (optionally filtered by status)
-2. For each design, call `mcp__yaz__get_org_images` — run these in parallel where possible
-3. Check which image types are present vs. missing
-4. Report gaps:
+2. **Gate before fan-out:** if there are more than 20 designs, tell the human the count and ask to confirm before proceeding — fetching images for each design is one tool call per design
+3. For each design (within the confirmed batch), call `mcp__yaz__get_org_images` — run in parallel
+4. Check which image types are present vs. missing
+5. Report gaps:
 
 ```
 ## Image Coverage Audit — {Org Name}
