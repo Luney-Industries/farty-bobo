@@ -11,7 +11,7 @@ Yaz is a connector to the organization design and product image catalog system. 
 
 Before anything else, verify the yaz MCP tools are available: `mcp__yaz__search_orgs`, `mcp__yaz__get_org_designs`, `mcp__yaz__get_org_images`, `mcp__yaz__get_org_product_images`.
 
-If none are present, stop and tell the human: "The Yaz MCP connector isn't configured. Set it up first."
+If any are missing, stop and tell the human: "The Yaz MCP connector isn't configured. Set it up first."
 
 ## 1. Understand the Request
 
@@ -29,13 +29,16 @@ Parse the intent from args or conversation context. If ambiguous, make the most 
 
 Use `mcp__yaz__search_orgs` with a partial name from the request. If multiple orgs match, present them as a short numbered list and ask the human to pick. If exactly one matches, proceed without asking.
 
-## 3. Fetch Designs
+## 3. Route to Intent
 
-Use `mcp__yaz__get_org_designs` with the org ID. Optionally filter by:
+Determine the primary intent before fetching anything beyond the org:
+
+- **Product image query** (human asks about specific products, colors, or product-level images) → skip to **4c** directly using the org ID — do not call `get_org_designs` first
+- **Everything else** → call `mcp__yaz__get_org_designs` with the org ID, then route to the appropriate section below
+
+When fetching designs, apply filters if the request implies them:
 - `approval_status`: `approved`, `to_review`, `in_progress`, `to_rework`
 - `active_status`: `active`, `inactive`, `amazon-only`
-
-Apply filters if the human's request implies them (e.g. "approved designs" → `approval_status=approved`).
 
 ## 4. Handle the Intent
 
