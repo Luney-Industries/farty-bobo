@@ -141,8 +141,6 @@ After any result, offer relevant next steps:
 
 - **Filter further** — apply different status, color, or product filters
 - **Audit coverage** — run a gap analysis across all designs
-- **Create a Linear ticket** — log a gap or issue via `/create-linear-ticket`
-- **Post to Slack** — share findings via `/post-on-slack`
 - **Done** — nothing more needed
 
 Don't offer options that don't make sense for the current result. Keep it short.
