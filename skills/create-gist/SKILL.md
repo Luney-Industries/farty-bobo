@@ -43,7 +43,22 @@ If no content is identifiable, ask the human what to put in the gist before proc
 
 ## 2. Infer filename and description
 
-**Filename**: If a real file was referenced, use its basename. If `--filename` was passed, use that value. Otherwise infer from context (e.g. `fix.py`, `output.log`, `snippet.md`). Default to `gist.txt` only as a last resort. The extension matters — `gh` uses it for syntax highlighting.
+**Filename**: All gist filenames MUST follow this convention:
+
+```
+{TICKET-ID}-{SUMMARY}.{EXTENSION}
+```
+
+- **TICKET-ID**: The ticket/issue ID from the conversation (e.g. `ENG-123`, `FB-42`). If no ticket ID is present, use `NO-TICKET`.
+- **SUMMARY**: A short kebab-case summary of the content (e.g. `fix-auth-redirect`, `query-results`, `migration-output`). Max 5 words. No spaces.
+- **EXTENSION**: Infer from the content type (`.py`, `.ts`, `.sql`, `.log`, `.md`, etc.). The extension matters — `gh` uses it for syntax highlighting.
+
+If `--filename` was passed explicitly, use that value verbatim — but still warn the human if it doesn't match the convention.
+
+Examples of valid filenames:
+- `ENG-123-fix-auth-redirect.py`
+- `FB-42-migration-output.log`
+- `NO-TICKET-query-results.sql`
 
 **Description**: Summarize the purpose in one short line. Pull from conversation context, the skill args, or the content itself. Keep it under 72 characters.
 
