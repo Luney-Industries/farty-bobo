@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+
+LAYOUT='{"direction":"horizontal","split":0.5,"children":[{"pane":{"surfaces":[{"type":"terminal","name":"Iex","command":"","focus":true}]}},{"direction":"vertical","split":0.5,"children":[{"pane":{"surfaces":[{"type":"terminal","name":"zsh","command":""}]}},{"pane":{"surfaces":[{"type":"terminal","name":"Claude","command":"claude"}]}}]}]}'
+
+NAME="${1:-Youth}"
+
+cmux workspace create --name "$NAME" --cwd "$PWD" --layout "$LAYOUT"

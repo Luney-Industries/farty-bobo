@@ -423,6 +423,10 @@ image: /logos/fartybobo_angry_mascot_1360.png
           <span class="fb-item-key">plugins/</span>
           <span class="fb-item-val">Don't want the whole thing? Run <code>/plugin marketplace add fartybobo/farty-bobo</code> then <code>/farty-bobo:install</code>.</span>
         </li>
+        <li>
+          <span class="fb-item-key">cmux/</span>
+          <span class="fb-item-val">First-party cmux + ghostty workspace config. Templates only — run <code>cmux/setup.sh --cwd ~/your/project</code> to generate the real files and wire up the <code>cmux-workspace</code> alias.</span>
+        </li>
       </ul>
     </div>
 
