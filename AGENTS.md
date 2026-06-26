@@ -109,6 +109,27 @@ Restart Claude Code, then run `/farty-bobo:install`. The skill will:
 
 Skills, hooks, and commands in this repo are automatically discoverable by the plugin — no manifest update needed. Just add the file to the right directory (`skills/`, `hooks/`, `commands/`) and it will appear in the install menu on the next run.
 
+## Setting Up cmux & Ghostty
+
+The `cmux/` folder holds config for the cmux terminal workspace manager and the ghostty terminal. The config files carry machine-specific paths, so only `*.template` files are committed — the generated runtime files (`cmux/configs/ghostty`, `cmux/configs/cmux.json`, `cmux/bin/youth-workspace.sh`) are gitignored via the per-folder `.gitignore` rules (`*`, `!*.template`, `!.gitignore`).
+
+### On a new machine
+
+Run the setup script, pointing `--cwd` at the project directory you work in:
+
+```sh
+cmux/setup.sh --cwd ~/dev/youth/youthinc
+```
+
+It substitutes the templates into real files, symlinks them into `~/.config/cmux/` and `~/.config/ghostty/`, and installs the `cmux-workspace` shell alias. Omitting `--cwd` falls back to `$HOME` with a warning.
+
+The workspace layout JSON is defined in two places — `cmux/configs/cmux.json.template` (as a cmux command) and `cmux/bin/youth-workspace.sh.template` (as a CLI call). Both must be kept in sync if the layout changes.
+
+### Adding a new template parameter
+
+1. Add a `{{PLACEHOLDER}}` token to the relevant `*.template` file.
+2. In `cmux/setup.sh`, add a `sed "s|{{PLACEHOLDER}}|$value|g"` substitution where that template is generated (see how `{{WORKING_DIRECTORY}}` is handled).
+
 ## Committing rules on this repo
 
 This is a solo project repo that does not require PRs or reviews from other humans or other agents. It is okay to merge to main.

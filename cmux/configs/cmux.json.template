@@ -1,0 +1,95 @@
+{
+  "$schema": "https://raw.githubusercontent.com/manaflow-ai/cmux/main/web/data/cmux.schema.json",
+  "schemaVersion": 1,
+
+  "actions": {
+    "youth": {
+      "type": "workspaceCommand",
+      "title": "Youth Workspace",
+      "commandName": "Youth Workspace",
+      "icon": { "type": "symbol", "name": "folder.badge.plus" }
+    }
+  },
+
+  "ui": {
+    "newWorkspace": {
+      "action": "youth",
+      "contextMenu": [
+        { "action": "youth", "title": "Youth Workspace" },
+        { "type": "separator" },
+        { "action": "cmux.newTerminal", "title": "New Terminal" },
+        { "action": "cmux.newBrowser", "title": "New Browser" }
+      ]
+    }
+  },
+
+  "commands": [
+    {
+      "name": "Youth Workspace",
+      "description": "Create a fresh workspace for youthinc",
+      "workspace": {
+        "name": "Youth",
+        "cwd": ".",
+        "layout": {
+          "direction": "horizontal",
+          "split": 0.5,
+          "children": [
+            {
+              "pane": {
+                "surfaces": [
+                  {
+                    "type": "terminal",
+                    "name": "Iex",
+                    "command": "",
+                    "focus": true
+                  }
+                ]
+              }
+            },
+            {
+              "direction": "vertical",
+              "split": 0.5,
+              "children": [
+                {
+                  "pane": {
+                    "surfaces": [
+                      {
+                        "type": "terminal",
+                        "name": "zsh",
+                        "command": ""
+                      }
+                    ]
+                  }
+                },
+                {
+                  "pane": {
+                    "surfaces": [
+                      {
+                        "type": "terminal",
+                        "name": "Claude",
+                        "command": "claude"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ],
+
+  "app": {
+    "openSupportedFilesInCmux": false
+  },
+
+  "browser": {
+    "openTerminalLinksInCmuxBrowser": false,
+    "interceptTerminalOpenCommandInCmuxBrowser": false
+  },
+
+  "fileExplorer": {
+    "doubleClickAction": "defaultEditor"
+  }
+}

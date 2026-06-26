@@ -81,6 +81,33 @@
 
    Each entry should show `->` pointing to the repo paths.
 
+## cmux Setup
+
+The `cmux/` folder holds first-party config for the [cmux](https://github.com/manaflow-ai/cmux) terminal workspace manager and the [ghostty](https://ghostty.org) terminal. Only `*.template` files are committed — the real config files contain machine-specific paths and are generated locally (and gitignored).
+
+Run it on a new machine, pointing `--cwd` at the project you live in:
+
+```sh
+cmux/setup.sh --cwd ~/dev/youth/youthinc
+```
+
+If you omit `--cwd`, it falls back to `$HOME` and warns you about it.
+
+The script generates:
+
+- `cmux/configs/ghostty` — ghostty config with `working-directory` substituted to your `--cwd`
+- `cmux/configs/cmux.json` — cmux config (straight copy of the template)
+- `cmux/bin/youth-workspace.sh` — the workspace-creation script (made executable)
+
+It then symlinks the generated files into place:
+
+- `~/.config/cmux/cmux.json` → `cmux/configs/cmux.json`
+- `~/.config/ghostty/config` → `cmux/configs/ghostty`
+
+And installs a `cmux-workspace` alias in your `~/.zshrc` (or `~/.bashrc`) that runs `youth-workspace.sh`. Re-running is idempotent — the alias is added only once. If you move the repo, re-run `cmux/setup.sh --cwd <path>` to refresh the alias, which hardcodes the absolute repo path at setup time.
+
+The templates ship with a Youth Inc workspace layout but are yours to adapt. Edit `cmux/configs/ghostty.template` to change fonts, themes, or opacity. Edit `cmux/configs/cmux.json.template` to add new workspace commands or tweak UI settings (full schema reference: [cmux schema](https://raw.githubusercontent.com/manaflow-ai/cmux/main/web/data/cmux.schema.json)). Edit `cmux/bin/youth-workspace.sh.template` to change the default pane layout. Re-run `cmux/setup.sh` after any template change to regenerate the live files.
+
 ## Customization
 
 - Edit files in this repo, then `git commit` and `git push` — changes propagate to every machine via `git pull`.
