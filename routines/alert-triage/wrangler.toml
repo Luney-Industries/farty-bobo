@@ -1,3 +1,17 @@
 name = "alert-triage-webhook"
 main = "cloudflare-worker.js"
 compatibility_date = "2025-01-01"
+
+[vars]
+# Comma-separated Slack channel IDs to accept events from.
+# Get a channel ID: right-click the channel in Slack → Copy link → ID is the last segment.
+ALLOWED_CHANNEL_IDS = ""  # e.g. "C12345678"
+
+# Optional: bind a KV namespace for event_id deduplication.
+# Without this, dedup falls back to X-Slack-Retry-Num header dropping.
+# To enable:
+#   1. wrangler kv namespace create SEEN_EVENTS
+#   2. Paste the returned id below and uncomment.
+# [[kv_namespaces]]
+# binding = "SEEN_EVENTS"
+# id = ""
