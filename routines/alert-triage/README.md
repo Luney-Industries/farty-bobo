@@ -34,12 +34,22 @@ Skips: Honeybadger (local Docker only, not cloud-accessible)
 These live exclusively in Cloudflare's secret store. Set them with `wrangler secret put` and never put real values in `.env`, `wrangler.toml`, or anywhere in the repo.
 
 ```bash
-wrangler secret put CLAUDE_TOKEN          # your claude.ai API token
+wrangler secret put CLAUDE_TOKEN          # see below
 wrangler secret put ROUTINE_ID            # trig_0191VXjhXDQ7UFtsz5STs4wo
 wrangler secret put SLACK_SIGNING_SECRET  # Slack App → Basic Information → Signing Secret
 ```
 
 `.env.sample` documents these key names for reference only — it does not store or load them.
+
+#### How to get CLAUDE_TOKEN
+
+`CLAUDE_TOKEN` is your claude.ai session cookie — it runs routines under your account and bills against your plan (not the Anthropic API).
+
+1. Open https://claude.ai in your browser
+2. DevTools → Application → Cookies → `https://claude.ai`
+3. Find the cookie named `sessionKey` and copy its value
+
+**Note:** Session cookies expire (typically weeks to months). When the Worker starts getting 401s from the claude.ai API, extract a fresh `sessionKey` and re-run `wrangler secret put CLAUDE_TOKEN`.
 
 ### Required Config (wrangler.toml)
 
