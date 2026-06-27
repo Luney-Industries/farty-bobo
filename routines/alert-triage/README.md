@@ -29,13 +29,17 @@ Skips: Honeybadger (local Docker only, not cloud-accessible)
 **Dedup:** Event-id deduplication via Cloudflare KV (optional); falls back to `X-Slack-Retry-Num` header drop.
 **Scope:** Channel allowlist enforced at the worker boundary — only configured channel IDs trigger the routine. Thread replies are dropped.
 
-### Required Secrets
+### Secrets (Cloudflare only — never commit these)
+
+These live exclusively in Cloudflare's secret store. Set them with `wrangler secret put` and never put real values in `.env`, `wrangler.toml`, or anywhere in the repo.
 
 ```bash
 wrangler secret put CLAUDE_TOKEN          # your claude.ai API token
 wrangler secret put ROUTINE_ID            # trig_0191VXjhXDQ7UFtsz5STs4wo
-wrangler secret put SLACK_SIGNING_SECRET  # Slack App → Basic Information
+wrangler secret put SLACK_SIGNING_SECRET  # Slack App → Basic Information → Signing Secret
 ```
+
+`.env.sample` documents these key names for reference only — it does not store or load them.
 
 ### Required Config (wrangler.toml)
 
