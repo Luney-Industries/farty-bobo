@@ -2,13 +2,11 @@
 
 Automated alert triage cloud agent that watches `#system-alerts-prod`, classifies new bugs, and runs a triage-to-PR loop autonomously.
 
-## Cloud Routine
+## How It Works
 
-**Routine ID:** `trig_0191VXjhXDQ7UFtsz5STs4wo`
-**Manage:** https://claude.ai/code/routines/trig_0191VXjhXDQ7UFtsz5STs4wo
-**Schedule:** Hourly fallback (real triggers come from the Cloudflare Worker webhook)
-**Repo:** `https://github.com/youth-inc/youthinc`
-**MCP connectors:** Slack, Linear, PostHog
+Honeybadger detects an error → posts to `#system-alerts-prod` via its Slack app → Slack fires a webhook → Cloudflare Worker verifies the signature and forwards to the claude.ai routine → routine classifies, tickets, investigates, and opens a PR.
+
+**Fallback:** the routine also runs hourly as a safety net.
 
 ## What It Does
 
@@ -18,74 +16,86 @@ Automated alert triage cloud agent that watches `#system-alerts-prod`, classifie
 4. **Fix** — opens a branch (`kinano/auto-fix-*`) and a PR with the minimal fix
 5. **Notify** — comments on the Linear ticket with the PR link; optionally posts in the Slack thread (requires human approval due to org policy)
 
-Skips: Honeybadger (local Docker only, not cloud-accessible)
+## Setup
 
-## Cloudflare Worker (Webhook Shim)
+### 1. Create a Cloudflare account
 
-`cloudflare-worker.js` + `wrangler.toml` — bridges Slack webhooks to the claude.ai routine run endpoint.
+https://dash.cloudflare.com/sign-up — free tier is sufficient.
 
-**Security:** Slack HMAC-SHA256 signature verification, 5-min replay window, constant-time compare.
-**Reliability:** 3-attempt retry with backoff on 5xx; 4xx errors (bad token, bad routine ID) are not retried.
-**Dedup:** Event-id deduplication via Cloudflare KV (optional); falls back to `X-Slack-Retry-Num` header drop.
-**Scope:** Channel allowlist enforced at the worker boundary — only configured channel IDs trigger the routine. Thread replies are dropped.
-
-### Secrets (Cloudflare only — never commit these)
-
-These live exclusively in Cloudflare's secret store. Set them with `wrangler secret put` and never put real values in `.env`, `wrangler.toml`, or anywhere in the repo.
+### 2. Install Wrangler and log in
 
 ```bash
-wrangler secret put CLAUDE_TOKEN          # see below
-wrangler secret put ROUTINE_ID            # trig_0191VXjhXDQ7UFtsz5STs4wo
-wrangler secret put SLACK_SIGNING_SECRET  # Slack App → Basic Information → Signing Secret
+npm install -g wrangler
+wrangler login
 ```
 
-`.env.sample` documents these key names for reference only — it does not store or load them.
+### 3. Set the channel ID in wrangler.toml
 
-#### How to get CLAUDE_TOKEN
+Get the `#system-alerts-prod` channel ID: right-click the channel in Slack → Copy link → last path segment (starts with `C`).
 
-`CLAUDE_TOKEN` is your claude.ai session cookie — it runs routines under your account and bills against your plan (not the Anthropic API).
-
-1. Open https://claude.ai in your browser
-2. DevTools → Application → Cookies → `https://claude.ai`
-3. Find the cookie named `sessionKey` and copy its value
-
-**Note:** Session cookies expire (typically weeks to months). When the Worker starts getting 401s from the claude.ai API, extract a fresh `sessionKey` and re-run `wrangler secret put CLAUDE_TOKEN`.
-
-### Required Config (wrangler.toml)
-
-Set `ALLOWED_CHANNEL_IDS` to the Slack channel ID for `#system-alerts-prod`.
-Get the ID: right-click the channel in Slack → Copy link → last path segment.
-
+Edit `wrangler.toml`:
 ```toml
-[vars]
 ALLOWED_CHANNEL_IDS = "C12345678"  # replace with real ID
 ```
 
+### 4. Set secrets
+
+Secrets live exclusively in Cloudflare's secret store — never commit real values to the repo.
+
+```bash
+wrangler secret put CLAUDE_TOKEN
+wrangler secret put ROUTINE_ID
+wrangler secret put SLACK_SIGNING_SECRET
+```
+
+**CLAUDE_TOKEN** — your claude.ai session cookie (bills against your plan, not the Anthropic API):
+1. Open https://claude.ai → DevTools → Application → Cookies → `https://claude.ai`
+2. Copy the value of the `sessionKey` cookie
+> Session cookies expire after weeks to months. When the Worker returns 401s, re-run `wrangler secret put CLAUDE_TOKEN` with a fresh `sessionKey`.
+
+**ROUTINE_ID** — paste `trig_0191VXjhXDQ7UFtsz5STs4wo`
+
+**SLACK_SIGNING_SECRET** — from your Slack App → Basic Information → Signing Secret (set up in step 6)
+
+### 5. Deploy
+
+```bash
+cd routines/alert-triage
+wrangler deploy
+# → https://alert-triage-webhook.YOUR_SUBDOMAIN.workers.dev
+```
+
+### 6. Create the Slack App
+
+1. https://api.slack.com/apps → Create New App → From scratch
+2. **Basic Information → Signing Secret** → copy it → `wrangler secret put SLACK_SIGNING_SECRET`
+3. **Event Subscriptions** → On → paste your Worker URL as the Request URL (Slack sends a verification challenge — the Worker handles it automatically)
+4. **Subscribe to bot events** → Add `message.channels` → Save
+5. **Install App** → Install to Workspace → authorize
+6. In Slack: `#system-alerts-prod` → Integrations → Add Apps → add your new app
+
+---
+
+## Cloud Routine Reference
+
+**Routine ID:** `trig_0191VXjhXDQ7UFtsz5STs4wo`
+**Manage:** https://claude.ai/code/routines/trig_0191VXjhXDQ7UFtsz5STs4wo
+**Repo:** `https://github.com/youth-inc/youthinc`
+**MCP connectors:** Slack, Linear, PostHog
+
+## Cloudflare Worker
+
+**Security:** Slack HMAC-SHA256 signature verification, 5-min replay window, constant-time compare.
+**Reliability:** 3-attempt retry with backoff on 5xx; 4xx errors are not retried.
+**Dedup:** Event-id deduplication via Cloudflare KV (optional); falls back to `X-Slack-Retry-Num` header drop.
+**Scope:** Only messages from `ALLOWED_CHANNEL_IDS` pass through. Thread replies and non-Honeybadger bot messages are dropped.
+
 ### Optional: KV Deduplication
 
-For stronger event-id dedup (survives worker restarts):
+Stronger dedup that survives worker restarts:
 
 ```bash
 wrangler kv namespace create SEEN_EVENTS
 # paste the returned id into wrangler.toml [[kv_namespaces]] and uncomment
 wrangler deploy
 ```
-
-### Deploy
-
-```bash
-npm install -g wrangler
-wrangler login
-# set secrets and ALLOWED_CHANNEL_IDS in wrangler.toml first
-wrangler deploy
-# → https://alert-triage-webhook.YOUR_SUBDOMAIN.workers.dev
-```
-
-### Wire Up Slack
-
-1. Slack App → Event Subscriptions → enable
-2. Request URL: your Worker URL (handles `url_verification` automatically)
-3. Subscribe to `message.channels` bot event
-4. Add the app to `#system-alerts-prod` only
-
-**Honeybadger:** Does not send `X-Slack-Signature` headers — needs a separate path or shared-secret approach. Currently out of scope.
