@@ -80,7 +80,7 @@ export default {
       const event = payload.event || {};
 
       // Only allow real user messages OR the Honeybadger bot — drop everything else
-      const isHoneybadger = event.app_id === "AB8F2KTS6";
+      const isHoneybadger = event.app_id === env.HONEYBADGER_SLACK_APP_ID;
       if (
         event.type !== "message" ||
         event.subtype ||

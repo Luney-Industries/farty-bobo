@@ -7,6 +7,10 @@ compatibility_date = "2025-01-01"
 # Get a channel ID: right-click the channel in Slack → Copy link → ID is the last segment.
 ALLOWED_CHANNEL_IDS = ""  # e.g. "C12345678"
 
+# Slack app ID for the Honeybadger integration — allows Honeybadger bot messages through.
+# Found in: https://your-workspace.slack.com/marketplace/<APP_ID>-honeybadger
+HONEYBADGER_SLACK_APP_ID = "AB8F2KTS6"
+
 # Optional: bind a KV namespace for event_id deduplication.
 # Without this, dedup falls back to X-Slack-Retry-Num header dropping.
 # To enable:
