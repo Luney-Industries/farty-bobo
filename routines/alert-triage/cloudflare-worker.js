@@ -71,7 +71,7 @@ export default {
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("");
 
-    if (!timingSafeEqual(hexSig, slackSig)) {
+    if (!timingSafeEqual(new TextEncoder().encode(hexSig), new TextEncoder().encode(slackSig))) {
       return new Response("Unauthorized", { status: 401 });
     }
 
@@ -174,10 +174,12 @@ function sleep(ms) {
 }
 
 function timingSafeEqual(a, b) {
-  if (a.length !== b.length) return false;
+  if (a.byteLength !== b.byteLength) return false;
+  const viewA = new DataView(a.buffer ?? a);
+  const viewB = new DataView(b.buffer ?? b);
   let mismatch = 0;
-  for (let i = 0; i < a.length; i++) {
-    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  for (let i = 0; i < a.byteLength; i++) {
+    mismatch |= viewA.getUint8(i) ^ viewB.getUint8(i);
   }
   return mismatch === 0;
 }

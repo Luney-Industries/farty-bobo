@@ -1,6 +1,10 @@
 name = "alert-triage-webhook"
 main = "cloudflare-worker.js"
-compatibility_date = "2025-01-01"
+compatibility_date = "2026-06-27"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
 
 [vars]
 # Comma-separated Slack channel IDs to accept events from.
