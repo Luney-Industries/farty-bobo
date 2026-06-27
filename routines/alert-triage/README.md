@@ -47,7 +47,10 @@ ALLOWED_CHANNEL_IDS = "C12345678"  # replace with real ID
 
 Secrets live exclusively in Cloudflare's secret store — never commit real values to the repo.
 
+Run these from the `routines/alert-triage/` directory (where `wrangler.toml` lives):
+
 ```bash
+cd routines/alert-triage
 wrangler secret put CLAUDE_TOKEN
 wrangler secret put ROUTINE_ID
 wrangler secret put SLACK_SIGNING_SECRET
