@@ -79,12 +79,13 @@ export default {
     if (payload.type === "event_callback") {
       const event = payload.event || {};
 
-      // Drop non-message events, bot messages, edits, and thread replies
+      // Only allow real user messages OR the Honeybadger bot — drop everything else
+      const isHoneybadger = event.app_id === "AB8F2KTS6";
       if (
         event.type !== "message" ||
         event.subtype ||
-        event.bot_id ||
-        event.thread_ts
+        event.thread_ts ||
+        (event.bot_id && !isHoneybadger)
       ) {
         return new Response("OK", { status: 200 });
       }
