@@ -62,7 +62,23 @@ wrangler secret put SLACK_SIGNING_SECRET
 
 **SLACK_SIGNING_SECRET** — from your Slack App → Basic Information → Signing Secret (set up in step 6)
 
-### 5. Deploy
+### 5. (Optional) Enable KV Deduplication
+
+Stronger dedup that survives worker restarts. Without this, dedup falls back to dropping `X-Slack-Retry-Num` requests (weaker but usually sufficient for low-volume alert channels).
+
+```bash
+wrangler kv namespace create SEEN_EVENTS
+```
+
+Cloudflare prints a generated `id` — a unique identifier for your new KV namespace (e.g. `a1b2c3d4e5f6789012345678abcdef01`). Paste it into `wrangler.toml` and uncomment the `[[kv_namespaces]]` block:
+
+```toml
+[[kv_namespaces]]
+binding = "SEEN_EVENTS"
+id = "paste-the-id-here"
+```
+
+### 6. Deploy
 
 ```bash
 cd routines/alert-triage
@@ -70,7 +86,7 @@ wrangler deploy
 # → https://alert-triage-webhook.YOUR_SUBDOMAIN.workers.dev
 ```
 
-### 6. Create the Slack App
+### 7. Create the Slack App
 
 1. https://api.slack.com/apps → Create New App → From scratch
 2. **Basic Information → Signing Secret** → copy it → `wrangler secret put SLACK_SIGNING_SECRET`
@@ -78,6 +94,7 @@ wrangler deploy
 4. **Subscribe to bot events** → Add `message.channels` → Save
 5. **Install App** → Install to Workspace → authorize
 6. In Slack: `#system-alerts-prod` → Integrations → Add Apps → add your new app
+7. Add the Honeybadger Slack app to `#system-alerts-prod` if it isn't there already — it's what posts the alerts the routine watches for
 
 ---
 
@@ -95,24 +112,3 @@ wrangler deploy
 **Dedup:** Event-id deduplication via Cloudflare KV (optional); falls back to `X-Slack-Retry-Num` header drop.
 **Scope:** Only messages from `ALLOWED_CHANNEL_IDS` pass through. Thread replies and non-Honeybadger bot messages are dropped.
 
-### Optional: KV Deduplication
-
-Stronger dedup that survives worker restarts. Without this, dedup falls back to dropping `X-Slack-Retry-Num` requests (weaker but usually sufficient for low-volume alert channels).
-
-```bash
-wrangler kv namespace create SEEN_EVENTS
-```
-
-Cloudflare prints a generated `id` — a unique identifier for your new KV namespace (e.g. `a1b2c3d4e5f6789012345678abcdef01`). Paste it into `wrangler.toml` and uncomment the `[[kv_namespaces]]` block:
-
-```toml
-[[kv_namespaces]]
-binding = "SEEN_EVENTS"
-id = "paste-the-id-here"
-```
-
-Then redeploy:
-
-```bash
-wrangler deploy
-```
