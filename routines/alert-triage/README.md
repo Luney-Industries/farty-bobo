@@ -29,11 +29,16 @@ npm install -g wrangler
 wrangler login
 ```
 
-### 3. Set the channel ID in wrangler.toml
+### 3. Create wrangler.toml from the template
 
-Get the `#system-alerts-prod` channel ID: right-click the channel in Slack → Copy link → last path segment (starts with `C`).
+`wrangler.toml` is gitignored — copy the template and fill in your values:
 
-Edit `wrangler.toml`:
+```bash
+cp routines/alert-triage/wrangler.toml.template routines/alert-triage/wrangler.toml
+```
+
+Get the `#system-alerts-prod` channel ID: right-click the channel in Slack → Copy link → last path segment (starts with `C`). Set it in `wrangler.toml`:
+
 ```toml
 ALLOWED_CHANNEL_IDS = "C12345678"  # replace with real ID
 ```
