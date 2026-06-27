@@ -97,10 +97,22 @@ wrangler deploy
 
 ### Optional: KV Deduplication
 
-Stronger dedup that survives worker restarts:
+Stronger dedup that survives worker restarts. Without this, dedup falls back to dropping `X-Slack-Retry-Num` requests (weaker but usually sufficient for low-volume alert channels).
 
 ```bash
 wrangler kv namespace create SEEN_EVENTS
-# paste the returned id into wrangler.toml [[kv_namespaces]] and uncomment
+```
+
+Cloudflare prints a generated `id` — a unique identifier for your new KV namespace (e.g. `a1b2c3d4e5f6789012345678abcdef01`). Paste it into `wrangler.toml` and uncomment the `[[kv_namespaces]]` block:
+
+```toml
+[[kv_namespaces]]
+binding = "SEEN_EVENTS"
+id = "paste-the-id-here"
+```
+
+Then redeploy:
+
+```bash
 wrangler deploy
 ```
