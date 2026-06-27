@@ -81,7 +81,8 @@
   ],
 
   "app": {
-    "openSupportedFilesInCmux": false
+    "openSupportedFilesInCmux": false,
+    "openMarkdownInCmuxViewer": false
   },
 
   "browser": {
