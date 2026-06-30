@@ -19,6 +19,9 @@
     "honeybadger": {
       "command": "/bin/bash",
       "args": ["-c", "~/.claude/scripts/honeybadger-mcp.sh"]
+    },
+    "vercel": {
+      "url": "https://mcp.vercel.com"
     }
   }
 }
