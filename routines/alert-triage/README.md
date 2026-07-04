@@ -1,5 +1,7 @@
 # Alert Triage Routine
 
+> **⚠️ DEPRECATED — superseded by Claude Tag**, which is more powerful and capable. This routine has been disabled on claude.ai. This code is kept for reference only.
+
 Automated alert triage cloud agent that watches `#system-alerts-prod`, classifies new bugs, and runs a triage-to-PR loop autonomously.
 
 ## How It Works
