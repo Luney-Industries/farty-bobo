@@ -19,14 +19,16 @@ If none of the above provide enough signal, ask the human what the document shou
 
 A Linear document requires exactly one parent: a **team**, **project**, **initiative**, **cycle**, or **issue**. Ask the human which one this document belongs to, unless it's obvious from context (e.g. they were just discussing a specific project).
 
-Use the Linear MCP to resolve the parent:
-- Team → `mcp__linear__list_teams`
-- Project → `mcp__linear__list_projects`
-- Initiative → `mcp__linear__list_initiatives`
-- Issue → the identifier they gave you (e.g. `LIN-123`), or `mcp__linear__get_issue` to confirm it exists
-- Cycle → ask for the team too, since cycle names/numbers are disambiguated by team
+Use the Linear MCP to resolve the parent to its ID — never pass a human-readable name straight into `save_document`:
+- Team → `mcp__linear__list_teams`, use the resolved team ID
+- Project → `mcp__linear__list_projects`, use the resolved project ID
+- Initiative → `mcp__linear__list_initiatives`, use the resolved initiative ID
+- Cycle → ask for the team too, then use `mcp__linear__list_cycles` (scoped to that team) to resolve the specific cycle; cycle names/numbers alone are ambiguous across teams
+- Issue → call `mcp__linear__get_issue` with the identifier they gave you (e.g. `LIN-123`) to confirm it exists and obtain its ID; do not assume the human-readable identifier is accepted by `save_document` without confirming via `get_issue` first
 
-If the Linear MCP connector is not configured, prompt the human to add it before proceeding.
+Pass exactly one parent field to `save_document` — never more than one. If context makes more than one parent plausible (e.g. the human mentions both an issue and its project), ask which one the document should attach to; do not guess or pass both.
+
+If the Linear MCP connector is not configured (i.e., `LINEAR_API_KEY` is not set in `mcp.env`), prompt the human to add it before proceeding.
 
 ## 3. Draft the document
 
@@ -39,7 +41,7 @@ Construct a draft with:
 
   <the actual document content, structured with headings as appropriate>
   ```
-- **Icon** (optional): suggest an emoji or icon name if it fits the doc's purpose
+- **Icon** (optional): only set if the human asks for one — pass an icon name or emoji code (e.g. `Rocket` or `:eagle:`), not a raw Unicode emoji
 - **Color** (optional): leave unset unless the human asks for one
 
 ## 4. Review with human
@@ -52,9 +54,9 @@ Once approved, call `mcp__linear__save_document` with `title`, `content`, and ex
 
 Report back:
 - The document title
-- A direct link to the document (Linear returns a URL/slug in the response — surface it)
+- Whatever id/slug/link the `save_document` response actually contains — report only what the tool returned; do not construct or guess a URL if it isn't present in the response
 - A one-line summary of what was created
 
 ## 6. Updating an existing document
 
-If the human wants to edit a document instead of creating one, resolve it via `mcp__linear__get_document` or `mcp__linear__list_documents`, then call `mcp__linear__save_document` with its `id` set. Passing a parent on update reparents the document — only do this if the human explicitly asks to move it.
+If the human wants to edit a document instead of creating one, resolve it via `mcp__linear__get_document` or `mcp__linear__list_documents`, then call `mcp__linear__save_document` with its `id` set. `title` is only required when creating — when updating, you may pass just `id` and the fields you're changing (e.g. `content`) and omit `title` and the parent entirely. Passing a parent on update reparents the document — only do this if the human explicitly asks to move it.
