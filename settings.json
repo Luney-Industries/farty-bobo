@@ -137,6 +137,7 @@
   "tui": "fullscreen",
   "skipWorkflowUsageWarning": true,
   "theme": "dark",
+  "autoCompactEnabled": true,
   "skipAutoPermissionPrompt": true,
   "voiceEnabled": true,
   "skills": {
