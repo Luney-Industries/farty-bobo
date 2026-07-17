@@ -43,7 +43,7 @@ Accept the comment body from one of:
 
 ```
 ---
-_Posted by {your identity}_
+_Posted by {agent identity} on behalf of the human_
 ```
 
 If the comment is an update to an existing comment with this footer already present, replace the existing footer rather than appending a second one.
