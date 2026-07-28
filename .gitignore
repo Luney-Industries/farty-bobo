@@ -217,6 +217,13 @@ rotate-aws-keys.sh
 skills/gstack/
 skills/gstack-*/
 
+# Review/planning scratch artifacts that belong in /tmp/<repo>/<branch>, never in the repo.
+# Anchored to the repo root so legitimate docs like docs/critique-guidelines.md stay tracked.
+/_critique-consolidated.md
+/critique-*.md
+/review-draft-*.md
+/plans/
+
 # wrangler files
 .wrangler
 .dev.vars*
