@@ -283,10 +283,19 @@ Resolve the temp directory before writing:
 TEMP_DIR=/tmp/<repo-name>/<branch-name>
 ```
 
-- `<repo-name>` = `basename "$(git rev-parse --show-toplevel)"`
-- `<branch-name>` = `git branch --show-current`
+Resolve them with exactly these commands — one code path, correct both inside and outside a worktree:
 
-Create it if absent (`mkdir -p -m 700 "$TEMP_DIR"`). Write all findings to `$TEMP_DIR/review-draft-{timestamp}.md` (e.g. `$TEMP_DIR/review-draft-2026-04-14T15-44.md`). This keeps the file outside the repo and prevents accidental commits. The file has two sections per PR: a **Changes Summary** and the **Proposed Comments**.
+```sh
+repo_name=$(basename "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")")
+branch_name=$(git branch --show-current)
+# Detached HEAD returns an empty branch name.
+[ -n "$branch_name" ] || branch_name="detached-$(git rev-parse --short HEAD)"
+TEMP_DIR="/tmp/$repo_name/$branch_name"
+```
+
+**Do not use `git rev-parse --show-toplevel`** (returns the worktree path, not the main repo root) **and do not use `git rev-parse --git-common-dir | xargs dirname`** — outside a worktree that yields `.`, so `TEMP_DIR` silently becomes `/tmp/./<branch-name>` and the repo-name namespacing is lost with no error.
+
+Create it if absent (`mkdir -p -m 700 "$TEMP_DIR"`). Branch names contain slashes, so `$TEMP_DIR` is a nested path — `mkdir -p` is required, not optional. Write all findings to `$TEMP_DIR/review-draft-{timestamp}.md` (e.g. `$TEMP_DIR/review-draft-2026-04-14T15-44.md`). This keeps the file outside the repo and prevents accidental commits. The file has two sections per PR: a **Changes Summary** and the **Proposed Comments**.
 
 File format:
 

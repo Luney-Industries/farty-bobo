@@ -23,12 +23,19 @@ All planning artifacts (plan files, stubs, decisions scratch file) are written o
 TEMP_DIR=/tmp/<repo-name>/<branch-name>
 ```
 
-- `<repo-name>` = `basename "$(git rev-parse --show-toplevel)"`
-- `<branch-name>` = `git branch --show-current`
+Resolve them with exactly these commands — one code path, correct both inside and outside a worktree:
 
-Create the directory if it does not exist (`mkdir -p -m 700 "$TEMP_DIR/plans"`). All references to `plans/` below refer to `$TEMP_DIR/plans/` — never a `plans/` directory inside the repo.
+```sh
+repo_name=$(basename "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")")
+branch_name=$(git branch --show-current)
+# Detached HEAD returns an empty branch name.
+[ -n "$branch_name" ] || branch_name="detached-$(git rev-parse --short HEAD)"
+TEMP_DIR="/tmp/$repo_name/$branch_name"
+```
 
-**Worktree note:** if running inside a git worktree, `git rev-parse --show-toplevel` returns the worktree path. Use `git rev-parse --git-common-dir | xargs dirname` to resolve `<repo-name>` from the true repo root.
+Create the directory if it does not exist (`mkdir -p -m 700 "$TEMP_DIR/plans"`). Branch names contain slashes, so `$TEMP_DIR` is a nested path — `mkdir -p` is required, not optional. All references to `plans/` below refer to `$TEMP_DIR/plans/` — never a `plans/` directory inside the repo.
+
+**Do not use `git rev-parse --show-toplevel`** (returns the worktree path, not the main repo root) **and do not use `git rev-parse --git-common-dir | xargs dirname`** — outside a worktree that yields `.`, so `TEMP_DIR` silently becomes `/tmp/./<branch-name>` and the repo-name namespacing is lost with no error.
 
 ---
 
