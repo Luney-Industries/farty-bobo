@@ -87,30 +87,42 @@ Ask for confirmation. Do not create the gist until the human says yes. If runnin
 
 ## 5. Create the gist
 
-**If the source is a file on disk**, pass it directly:
+**IMPORTANT — `gh gist create`'s `--filename`/`-f` flag ONLY applies when reading from stdin (`-`). When you pass a file argument, `gh` names the gist after that file's own basename and silently ignores `--filename`.** This means you must NEVER hand `gh` a randomly-named temp file (e.g. `mktemp`'s default `gist-XXXXXX.ext`) — that random name is what ends up as the gist's filename. Always create the temp file (or copy the source file) under the exact `{TICKET-ID}-{SUMMARY}.{EXTENSION}` name computed in step 2, then pass that path with no `--filename` flag needed.
+
+**If the source is a file on disk** whose name already matches the convention, pass it directly:
 
 ```sh
 # Secret (default)
-gh gist create --desc "<description>" --filename "<filename>" <filepath>
+gh gist create --desc "<description>" <filepath>
 
 # Public
-gh gist create --public --desc "<description>" --filename "<filename>" <filepath>
+gh gist create --public --desc "<description>" <filepath>
 ```
 
-**If the source is content from the conversation**, write it to a temp file first using `mktemp` with the correct extension (e.g. `mktemp /tmp/gist-XXXXXX.py`), then run:
+If the source file's name does NOT match the convention, copy it first to a correctly-named temp path (see below) rather than passing it as-is.
+
+**If the source is content from the conversation, or a source file with the wrong name**, create a temp directory and write/copy the content into a file with the exact target name:
+
+```sh
+tmpdir=$(mktemp -d)
+tmpfile="$tmpdir/<filename>"   # e.g. "$tmpdir/ENG-123-fix-auth-redirect.py"
+# write or cp the content into "$tmpfile"
+```
+
+Then run:
 
 ```sh
 # Secret (default)
-gh gist create --desc "<description>" --filename "<filename>" <tmpfile>
+gh gist create --desc "<description>" "$tmpfile"
 
 # Public
-gh gist create --public --desc "<description>" --filename "<filename>" <tmpfile>
+gh gist create --public --desc "<description>" "$tmpfile"
 ```
 
-After the gist is created (or if creation fails), **delete the temp file immediately**:
+After the gist is created (or if creation fails), **delete the temp directory immediately**:
 
 ```sh
-rm -f <tmpfile>
+rm -rf "$tmpdir"
 ```
 
 ## 6. Report back
