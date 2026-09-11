@@ -25,7 +25,8 @@
       "args": ["-c", "~/.claude/scripts/posthog-mcp.sh"]
     },
     "vercel": {
-      "url": "https://mcp.vercel.com"
+      "command": "/bin/bash",
+      "args": ["-c", "~/.claude/scripts/vercel-mcp.sh"]
     }
   },
   "preferences": {
