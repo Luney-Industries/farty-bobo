@@ -47,10 +47,18 @@ disable-model-invocation: false
 
 4. Create a todo list for each agent. Kick off the execution.
 
-5. Once the agent(s) are done, assess whether the changes warrant a modularity review:
+5. **Waiting on agents that run tests/builds — never poll synchronously.** Tests and CI runs (`bin/mix ci`, full suites, etc.) can take minutes. The orchestrator must not sit idle babysitting an agent that is itself babysitting a test monitor. Long-running tests/builds should run in the background (`run_in_background` or an equivalent monitor) so the harness can notify on completion rather than the orchestrator holding a synchronous turn open.
+
+   Handle whichever of these actually applies — they are distinct situations, not one blended tip:
+   - **An agent reports it's waiting on its own test/CI monitor.** Do not re-poll it. If there is other agent/todo work available, do that now; its completion notification will arrive on its own.
+   - **There is no other work left, and this session has `ScheduleWakeup` available** (e.g. running under `/loop` or similar): schedule a wakeup with a delay matched to how long the run actually takes — not a tight poll loop.
+   - **There is no other work left, and `ScheduleWakeup` is not available** (an ordinary single-turn session): do not busy-wait or invent a polling loop. End the turn and let the background task notification bring you back — that notification is the resumption mechanism, not an optional convenience.
+   - **Recording known-flaky/unrelated test failures as a project memory:** only do this after confirming the failure is pre-existing and unrelated to the change (e.g. it also reproduces on the base branch, or is already documented as flaky elsewhere). Never record a failure as "known-flaky" just because it's inconvenient to investigate — that silently launders a possible regression into a permanent "ignore this" memory.
+
+6. Once the agent(s) are done, assess whether the changes warrant a modularity review:
    - If the diff touches **3+ modules/packages** or exceeds **500 changed lines**, run `/modularity:review` against the affected repos before proceeding to critique. Present coupling findings to the human and address any issues before committing.
    - Otherwise, skip the modularity review.
 
-6. Run `/critique` with the implementation plan and all impacted repos to ensure changes are reviewed, committed, and pushed.
+7. Run `/critique` with the implementation plan and all impacted repos to ensure changes are reviewed, committed, and pushed.
 
-7. Do not leave code comments. The code should be simple and self-explanatory. Comments should be used sparingly.
+8. Do not leave code comments. The code should be simple and self-explanatory. Comments should be used sparingly.
