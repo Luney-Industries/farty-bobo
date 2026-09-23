@@ -41,6 +41,7 @@ Look for a ticket reference in this order:
 4. **Human** — if no ticket ID is found, ask the human to provide one. If they confirm there is none, set `TICKET_ID=none` and skip Steps 5b onward.
 
 Once a candidate ID is found, determine the tracker:
+
 - If Linear MCP tools are available (`mcp__linear__get_issue` or `mcp__claude_ai_Linear__get_issue`): try fetching the issue by ID. If it resolves → **tracker = Linear**.
 - If Atlassian MCP tools are available (`mcp__claude_ai_Atlassian__*`): try fetching the Jira issue. If it resolves → **tracker = Jira**.
 - If both resolve, ask the human which tracker to use.
@@ -60,7 +61,7 @@ Here's what I'm about to do — confirm or reject each item:
   [1] Merge PR #<number> "<title>"
         Branch:    <headRefName> → <baseRefName>
         URL:       <url>
-        Method:    squash merge  (preferred; will re-confirm if repo requires a different method)
+        Method:    regular merge  (preferred; will re-confirm if repo requires a different method)
         After merge: delete branch <headRefName>
 
   [2] Transition ticket <TICKET_ID> "<ticket title>"   ← omit this block if TICKET_ID=none
@@ -77,13 +78,13 @@ Type YES to proceed, NO to abort, or tell me what to change.
 
 ## Step 4 — Merge the PR
 
-Use `gh` to merge with squash as the default:
+Use `gh` to merge with a regular merge commit as the default:
 
 ```sh
-gh pr merge <number> --squash --delete-branch
+gh pr merge <number> --merge --delete-branch
 ```
 
-If `--squash` is rejected by the repo (squash merges disabled), **stop and re-confirm with the human** before retrying with `--merge`. Do not silently fall through to a different merge strategy — the human approved squash specifically.
+If `--merge` is rejected by the repo (regular merges disabled), **stop and re-confirm with the human** before retrying with `--squash` or `--rebase`. Do not silently fall through to a different merge strategy — the human approved a regular merge specifically.
 
 Capture the merge commit SHA from the output (look for the SHA line in `gh pr merge` stdout or run `gh pr view <number> --json mergeCommit --jq '.mergeCommit.oid'` after the merge).
 
