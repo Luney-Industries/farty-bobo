@@ -229,3 +229,6 @@ skills/gstack-*/
 .dev.vars*
 !.dev.vars.example
 !.env.example
+
+# anthropic-skills plugin's local sync cache (bundles pulled from the marketplace) — not repo source
+/skills/synced/
