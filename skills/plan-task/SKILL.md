@@ -39,6 +39,23 @@ Create the directory if it does not exist (`mkdir -p -m 700 "$TEMP_DIR/plans"`).
 
 ---
 
+## Artifact Backup (human safety net)
+
+`$TEMP_DIR` is still the live working contract for this skill — every step reads and writes there exactly as described above. Nothing in this skill ever reads *from* an Artifact; the mirror below exists purely so a human can recover the last-known state of the plan after `$TEMP_DIR` is wiped (e.g. a reboot — see the macOS note in `/critique`).
+
+The plan file's on-disk name is `$TEMP_DIR/plans/<basename>.plan.md`, where `<basename>` is the ticket ID or, if there is no ticket, the slugified task title (per Step 5) — use that same `<basename>` for the Artifact title below (e.g. `"<basename> plan"`).
+
+**Before the first checkpoint of a session:** if a Jira or Linear ticket is known for this task, check its existing comments for a prior backup marker (a comment containing the literal text `Plan backup:`). If one is found, extract its URL and treat this session as already having a first checkpoint — every publish this session (including the very next one) uses that URL for `url:` rather than creating a new artifact or posting a new comment. This covers restarted sessions and `/plan-epic`'s "human rejects a plan, re-invoke `/plan-task`" recovery path, both of which spawn a fresh agent with no memory of a prior run's artifact.
+
+**At each checkpoint** (listed in the steps below — not on every intermediate edit), publish the plan file as a Claude Artifact. Scrub the plan file for obvious secrets (API keys, tokens, credentials pasted from a ticket) before every publish — this content is leaving `$TEMP_DIR` for a URL that may be shared as widely as the ticket itself, so the same "never commit secrets" discipline that applies to git applies here.
+
+- **First checkpoint of a session** (and no prior-run URL was found above): call `Artifact({action: "publish", file_path: <plan file path>, title: "<basename> plan", icon: "clipboard"})` with no `url`. This creates a new artifact. Take the returned URL and, if a Jira or Linear ticket was fetched in Step 2, post it as a ticket comment containing the literal marker text `Plan backup: {url}` (e.g. "Plan backup: {url} — mirrors the working copy at checkpoints; the live plan lives in the session, not here."). If there is no ticket (freeform task or markdown-file source), just note the URL to the human in chat. **If the comment post itself fails** (permissions, rate limit), this is not silently non-blocking like a publish failure — surface it to the human in chat immediately, since the comment is the only place the URL would otherwise be discoverable later.
+- **Every later checkpoint in the same session** (or a resumed session per above): call `Artifact({action: "publish", file_path: <plan file path>, url: <the known URL>})` to update the same artifact in place — never post a second ticket comment for the same plan.
+- If the `Artifact` publish call itself fails, log a one-line note to the human and continue — this is a backup, not a blocker. Never let a failed mirror stop planning.
+- **Load the `artifact-design` skill before the first publish call of a session** (per the `Artifact` tool's own contract, which applies even to `.md` files a skill explicitly instructs it to write). This backup is a plain data mirror, not a designed page — skip any visual design pass the skill would otherwise apply, but still load it so the publish call itself is well-formed.
+
+---
+
 ## Steps
 
 ### 1. Receive the Task
@@ -151,6 +168,8 @@ The plan must include:
 - Out-of-scope items explicitly called out
 - Any visualizations (mermaid diagrams, etc.) that aid review
 
+**Checkpoint:** once the plan file has this initial content, mirror it per "Artifact Backup" above. Steps 6–7 below can run long (Figma/modularity enrichment, writing a full TDD/BDD test suite); this is the earliest point worth protecting against a mid-session reboot, even though the plan is still a draft.
+
 ### 6a. Modularity Design (if applicable)
 
 If the implementation plan introduces **new modules, services, or significant component boundaries** — or restructures existing ones — run `/modularity:design` to create a modular architecture before proceeding:
@@ -239,6 +258,8 @@ Present the implementation plan and acceptance tests (with the AC coverage matri
 
 **Only after the human approves** both the plan and the tests: run `/audit-security` on the final plan. If `/audit-security` surfaces a HIGH severity finding, treat it as a blocker — do not proceed to Step 9 until it is resolved.
 
+**Checkpoint:** once the plan is approved and the security audit is clean, mirror the plan file per "Artifact Backup" above.
+
 ### 9. Write the Decisions Scratch File
 
 Before handing off to `/build`, record all human decisions made during this planning session to `$TEMP_DIR/plans/decisions-{ticket-id}.md`. This file is the source of truth for the Decision Log that `/critique` will post to the issue tracker (Jira or Linear) — it must exist before `/critique` runs.
@@ -261,6 +282,8 @@ _Written by /plan-task on YYYY-MM-DD_
 ```
 
 This file lives in `$TEMP_DIR` — outside the repo — so it can never be accidentally staged. It is consumed and deleted by `/critique` in Step 9.
+
+**Checkpoint:** once the decisions scratch file is written, mirror the plan file per "Artifact Backup" above (the decisions file itself is short-lived — `/critique` deletes it — so it is not separately mirrored; the plan file mirror already carries the human-facing summary of the work).
 
 ### 10. Commit and Hand Off
 
