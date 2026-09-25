@@ -145,6 +145,8 @@ Run all agents in parallel (single message, multiple Agent tool calls; this uses
 
 **Wait for every dispatched agent's completion notification before evaluating any output file.** A background Agent call returning is dispatch, not completion — see the HARD GUARD pattern this repo already uses in `/critique`. Do not treat "some agents have reported, others haven't" as license to start Step 5's file check or to retry an agent that simply hasn't finished yet; retrying a still-running agent races it onto the same output file and can produce a torn or overwritten write. Track every dispatched agent by name and confirm completion for all of them (or a hung-agent determination per "Handling agent failures" below) before moving on.
 
+**Artifact checkpoint (status note, not the draft):** once every dispatched agent (including retries) has validated successfully and `run-manifest-{RUN_ID}.json` has an entry for every PR, this fan-out — the most expensive, most interruption-prone part of the run — is complete but Step 5's draft is still minutes away. Publish `run-manifest-{RUN_ID}.json` itself as a Claude Artifact (`title: "PR review run manifest"`, `icon: "list"`, no `url` — this is a separate, shorter-lived artifact from the Step 5 draft backup below, not an update to it) so a reboot at this exact point at least leaves the human a record of which PRs were reviewed and where their validated output files were, even though the per-PR JSON findings themselves are not separately mirrored. Post the returned URL as a chat note only — do not post it to any PR, since it is superseded by the Step 5 draft-backup comment moments later. A failed publish here is logged and skipped, same as any other checkpoint.
+
 ### Output Contract
 
 Each agent must return a JSON object with exactly these fields:
@@ -410,6 +412,12 @@ Only present this subsection if at least one finding omitted `line` per the Outp
 ```
 
 Include every PR in the file, in order. Leave the summary at the bottom. **When reviewing a single PR, omit the Relationship and Integration Concerns lines — they are meaningless without multiple PRs.**
+
+**Artifact checkpoint:** `$TEMP_DIR` remains the live working contract for this skill — nothing downstream ever reads from an Artifact. This mirror exists only as a human safety net, since the draft file is deleted after posting (see "After approval" below) and would otherwise be unrecoverable past that point or after a reboot.
+
+Scrub the draft file for obvious secrets before publishing (same discipline as never committing secrets — a review draft can quote code containing a hardcoded credential a reviewer flagged). Load the `artifact-design` skill before the first publish call of this run (required by the `Artifact` tool even for a `.md` file a skill instructs it to write) — this is a plain data mirror, not a designed page, so skip any visual design pass but still load the skill so the call is well-formed.
+
+Publish `$TEMP_DIR/review-draft-{timestamp}.md` as a Claude Artifact: `Artifact({action: "publish", file_path: <draft file path>, title: "PR review draft", icon: "clipboard"})` with no `url` (there is exactly one Step 5 draft per run — Step 5 is entered once, so there is no later "re-generated" case to handle). Take the returned URL and post it as a comment containing the literal marker text `Review draft backup: {url}` — on the **lowest-numbered PR only** (`gh pr comment <lowest-number> -R {owner}/{repo} --body "Review draft backup: {url} — covers this and the other PRs in the same batch: {list of other PR numbers}."`), not on every PR in the batch, to avoid spamming near-identical comments across a large release batch. **If the comment post fails**, surface it to the human in chat immediately — unlike a failed `Artifact` publish, the comment is the only other place the URL would be discoverable later. A failed `Artifact` publish itself is logged and skipped — never a blocker.
 
 ### Present and wait for approval
 
