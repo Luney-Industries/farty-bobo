@@ -52,23 +52,31 @@ skill_files() {
   done
 }
 
+# Skills run the block in whatever shell the agent's Bash tool uses — bash or
+# zsh (macOS default) — so every resolution check runs under each available one.
+SHELLS=(bash)
+command -v zsh >/dev/null 2>&1 && SHELLS+=(zsh)
+
 resolve_with() {
-  local block
+  local sh="$1" input="$2" block
   block="$(extract_block "$CRITIQUE")"
-  if [[ "$1" == "__unset__" ]]; then
-    env -u FARTY_BOBO_TEMP_DIR bash -c "$block"$'\nprintf %s "$TEMP_ROOT"' 2>/dev/null
+  if [[ "$input" == "__unset__" ]]; then
+    env -u FARTY_BOBO_TEMP_DIR HOME=/home/u "$sh" -c "$block"$'\nprintf %s "$TEMP_ROOT"' 2>/dev/null
   else
-    FARTY_BOBO_TEMP_DIR="$1" bash -c "$block"$'\nprintf %s "$TEMP_ROOT"' 2>/dev/null
+    FARTY_BOBO_TEMP_DIR="$input" HOME=/home/u "$sh" -c "$block"$'\nprintf %s "$TEMP_ROOT"' 2>/dev/null
   fi
 }
 
 assert_resolves() {
-  local input="$1" expected="$2" got
-  got="$(resolve_with "$input")"
-  if [[ "$got" != "$expected" ]]; then
-    echo "  FAIL: FARTY_BOBO_TEMP_DIR=$input resolved to '$got', expected '$expected'"
-    return 1
-  fi
+  local input="$1" expected="$2" sh got ok=0
+  for sh in "${SHELLS[@]}"; do
+    got="$(resolve_with "$sh" "$input")"
+    if [[ "$got" != "$expected" ]]; then
+      echo "  FAIL ($sh): FARTY_BOBO_TEMP_DIR=$input resolved to '$got', expected '$expected'"
+      ok=1
+    fi
+  done
+  return "$ok"
 }
 
 # ── Test runner ──────────────────────────────────────────────────
@@ -136,7 +144,10 @@ test_block_resolution() {
   assert_resolves "__unset__" "/tmp" || ok=1
   assert_resolves "" "/tmp" || ok=1
   assert_resolves "/x/y/" "/x/y" || ok=1
-  assert_resolves "~/foo" "/tmp" || ok=1
+  assert_resolves "~/foo" "/home/u/foo" || ok=1
+  assert_resolves "~/foo/" "/home/u/foo" || ok=1
+  assert_resolves "~" "/home/u" || ok=1
+  assert_resolves "~other/foo" "/tmp" || ok=1
   assert_resolves "rel/dir" "/tmp" || ok=1
   assert_resolves "/" "/tmp" || ok=1
   return "$ok"
@@ -144,10 +155,13 @@ test_block_resolution() {
 
 # T-5: the block warns on stderr when it falls back from a bad value
 test_block_warns_on_fallback() {
-  local block err
+  local block err sh ok=0
   block="$(extract_block "$CRITIQUE")"
-  err="$(FARTY_BOBO_TEMP_DIR="rel/dir" bash -c "$block" 2>&1 >/dev/null)"
-  [[ "$err" == WARNING:*"rel/dir"* ]] || { echo "  FAIL: expected WARNING on stderr, got: $err"; return 1; }
+  for sh in "${SHELLS[@]}"; do
+    err="$(FARTY_BOBO_TEMP_DIR="rel/dir" "$sh" -c "$block" 2>&1 >/dev/null)"
+    [[ "$err" == WARNING:*"rel/dir"* ]] || { echo "  FAIL ($sh): expected WARNING on stderr, got: $err"; ok=1; }
+  done
+  return "$ok"
 }
 
 # ── Run ──────────────────────────────────────────────────────────

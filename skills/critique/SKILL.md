@@ -15,13 +15,17 @@ Planning and review artifacts written by `/plan-task`, `/plan-epic`, `/review-mu
 TEMP_DIR=$TEMP_ROOT/<repo-name>/<branch-name>
 ```
 
-`$TEMP_ROOT` is the human's `FARTY_BOBO_TEMP_DIR` env var, falling back to `/tmp` when it is unset, empty, or not an absolute path. The human owns the root; each skill owns the layout beneath it. Never hardcode `/tmp` in a skill — always go through `$TEMP_ROOT`, resolved with the canonical temp-root block below. Every skill that uses `FARTY_BOBO_TEMP_DIR` carries a byte-identical copy of that block (between the `# >>> temp-root` and `# <<< temp-root` markers); `tests/test-temp-root.sh` fails if any copy drifts. If the block prints its `WARNING`, surface it to the human.
+`$TEMP_ROOT` is the human's `FARTY_BOBO_TEMP_DIR` env var, falling back to `/tmp` when it is unset, empty, or not an absolute path. A leading `~/` (or a bare `~`) is expanded to `$HOME` by the block itself, since `settings.json` `env` values are never shell-expanded; `~user/` forms are not supported and fall back. The human owns the root; each skill owns the layout beneath it. Never hardcode `/tmp` in a skill — always go through `$TEMP_ROOT`, resolved with the canonical temp-root block below. Every skill that uses `FARTY_BOBO_TEMP_DIR` carries a byte-identical copy of that block (between the `# >>> temp-root` and `# <<< temp-root` markers); `tests/test-temp-root.sh` fails if any copy drifts. If the block prints its `WARNING`, surface it to the human.
 
 Resolve `$TEMP_ROOT`, `<repo-name>`, and `<branch-name>` using exactly these commands — there is **one** code path, correct both inside and outside a worktree. Do not substitute variants.
 
 ```sh
 # >>> temp-root (canonical: skills/critique/SKILL.md; tests/test-temp-root.sh enforces sync)
 TEMP_ROOT="${FARTY_BOBO_TEMP_DIR:-/tmp}"
+case "$TEMP_ROOT" in
+  "~") TEMP_ROOT="$HOME" ;;
+  "~/"*) TEMP_ROOT="$HOME/${TEMP_ROOT#"~/"}" ;;
+esac
 TEMP_ROOT="${TEMP_ROOT%/}"
 case "$TEMP_ROOT" in
   /?*) ;;

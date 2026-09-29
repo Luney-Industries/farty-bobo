@@ -2,7 +2,7 @@
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION": "2000",
-    "FARTY_BOBO_TEMP_DIR": "/Users/kinan/.farty-bobo/tmp"
+    "FARTY_BOBO_TEMP_DIR": "~/.farty-bobo/tmp"
   },
   "permissions": {
     "allow": [

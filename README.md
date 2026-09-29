@@ -127,11 +127,11 @@ Skills like `/plan-task`, `/critique`, `/review-multiple-prs`, `/pr-action-board
 
 ```json
 "env": {
-  "FARTY_BOBO_TEMP_DIR": "/Users/kinan/.farty-bobo/tmp"
+  "FARTY_BOBO_TEMP_DIR": "~/.farty-bobo/tmp"
 }
 ```
 
-Values in `settings.json` are literal — no `$HOME` or `~` expansion — so use a full absolute path. A relative path or a `~` is rejected with a warning and falls back to `/tmp`. Because `settings.json` is symlinked onto every machine, every machine gets the same path; on a machine where it isn't writable (e.g. a different username), the skill's `mkdir` fails and it tells you. Fix that machine by changing the value, or by replacing the symlink with a local copy (see Customization below). Restart any running Claude Code sessions after changing it.
+Claude Code doesn't shell-expand `settings.json` values, so the skills expand a leading `~/` to `$HOME` themselves. That keeps the shared value portable: every machine resolves it to its own home directory. Use `~/...` or a full absolute path. Anything else (a relative path, `$HOME/...`, `~user/...`) is rejected with a warning and falls back to `/tmp`. To use a different root on one machine, replace the symlinked `settings.json` with a local copy (see Customization below). Restart any running Claude Code sessions after changing it.
 
 **Alternative: `~/.zshrc`.** If you don't use the shared `settings.json`, `export FARTY_BOBO_TEMP_DIR="$HOME/.farty-bobo/tmp"` also works, but only for sessions whose shell reads your profile. GUI-launched apps like Claude Desktop don't, and there the skills silently use `/tmp`.
 

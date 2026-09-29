@@ -21,6 +21,10 @@ Resolve them with exactly these commands — one code path, correct both inside 
 ```sh
 # >>> temp-root (canonical: skills/critique/SKILL.md; tests/test-temp-root.sh enforces sync)
 TEMP_ROOT="${FARTY_BOBO_TEMP_DIR:-/tmp}"
+case "$TEMP_ROOT" in
+  "~") TEMP_ROOT="$HOME" ;;
+  "~/"*) TEMP_ROOT="$HOME/${TEMP_ROOT#"~/"}" ;;
+esac
 TEMP_ROOT="${TEMP_ROOT%/}"
 case "$TEMP_ROOT" in
   /?*) ;;
