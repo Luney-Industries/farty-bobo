@@ -22,7 +22,28 @@ disable-model-invocation: false
    - **Domain/content suggestion**: wording, thresholds, naming, business logic — domain experts (vets, PMs, etc.) outrank bots. Flag for human to decide; do NOT implement without explicit approval.
    - **Ignorable**: misunderstanding of project structure, ticket hierarchy, or context — recommend ignoring.
 
-   Write a markdown triage file to `/tmp/{PR_NUMBER}.md` (where `{PR_NUMBER}` is the numeric PR number from the PR URL or `gh pr view` output). If the file already exists from a prior run, overwrite it entirely. The file MUST contain a table with these columns:
+   Write a markdown triage file to `$TEMP_ROOT/address-pr-comments/<owner>/<repo>/{PR_NUMBER}.md` (where `{PR_NUMBER}` is the numeric PR number from the PR URL or `gh pr view` output). Derive `<owner>/<repo>` from the PR itself, not from the cwd — the PR may live in a different repo, and the cwd may not be a git repo at all. Resolve the paths with exactly these commands (see the Temp Directory section of `/critique`), passing `--repo OWNER/REPO` to `gh pr view` if one was given:
+
+```sh
+# >>> temp-root (canonical: skills/critique/SKILL.md; tests/test-temp-root.sh enforces sync)
+TEMP_ROOT="${FARTY_BOBO_TEMP_DIR:-/tmp}"
+case "$TEMP_ROOT" in
+  "~") TEMP_ROOT="$HOME" ;;
+  "~/"*) TEMP_ROOT="$HOME/${TEMP_ROOT#"~/"}" ;;
+esac
+TEMP_ROOT="${TEMP_ROOT%/}"
+case "$TEMP_ROOT" in
+  /?*) ;;
+  *) echo "WARNING: FARTY_BOBO_TEMP_DIR must be an absolute path (got '$FARTY_BOBO_TEMP_DIR'); falling back to /tmp" >&2
+     TEMP_ROOT=/tmp ;;
+esac
+# <<< temp-root
+pr_url=$(gh pr view <pr-number|pr-url> --json url -q .url)
+owner_repo=$(printf '%s\n' "$pr_url" | sed -nE 's#^https://[^/]+/([^/]+)/([^/]+)/pull/[0-9]+.*#\1/\2#p')
+(umask 077; mkdir -p "$TEMP_ROOT/address-pr-comments/$owner_repo")
+```
+
+   If the temp-root block prints its `WARNING`, surface it to the human. If `owner_repo` resolves empty, stop and tell the human before running the `mkdir` — do not write the file under a guessed name. Resolve once, echo the resolved absolute file path, and use that literal path in every later Write/Edit/Bash call. The owner/repo namespace keeps PR #42 in one repo from clobbering PR #42 in another. If the file already exists from a prior run, overwrite it entirely. The file MUST contain a table with these columns:
 
    | Author | Thread ID | File:Line | Summary | Agent Assessment | Decision |
    |--------|-----------|-----------|---------|------------------|----------|

@@ -119,6 +119,24 @@ source ~/.zshrc
 
 Requires Claude Code v2.1.195+. Restart any running Claude Code sessions for it to take effect. This is env-var only — there's no `settings.json` equivalent. To disable *all* mouse capture including wheel scroll instead, use `CLAUDE_CODE_DISABLE_MOUSE=1` (takes precedence if both are set).
 
+## Configuring the Temp Directory
+
+Skills like `/plan-task`, `/critique`, `/review-multiple-prs`, `/pr-action-board`, `/triage-mentions`, and `/address-pr-comments` write plans, decisions, critiques, and triage files outside the repo. The root is `FARTY_BOBO_TEMP_DIR`; when it is unset, they fall back to `/tmp`, which macOS wipes on reboot.
+
+**Recommended: set it in the `env` block of `settings.json`.** Claude Code injects that block into every session regardless of how it was launched (terminal, IDE, Claude Desktop), so the skills always see it. This repo's `settings.json` already sets it:
+
+```json
+"env": {
+  "FARTY_BOBO_TEMP_DIR": "~/.farty-bobo/tmp"
+}
+```
+
+Claude Code doesn't shell-expand `settings.json` values, so the skills expand a leading `~/` to `$HOME` themselves. That keeps the shared value portable: every machine resolves it to its own home directory. Use `~/...` or a full absolute path. Anything else (a relative path, `$HOME/...`, `~user/...`) is rejected with a warning and falls back to `/tmp`. To use a different root on one machine, replace the symlinked `settings.json` with a local copy (see Customization below). Restart any running Claude Code sessions after changing it.
+
+**Alternative: `~/.zshrc`.** If you don't use the shared `settings.json`, `export FARTY_BOBO_TEMP_DIR="$HOME/.farty-bobo/tmp"` also works, but only for sessions whose shell reads your profile. GUI-launched apps like Claude Desktop don't, and there the skills silently use `/tmp`.
+
+You own the root. Each skill decides its own layout beneath it: `<repo>/<branch>/` for planning and review artifacts (e.g. `<repo>/<branch>/plans/`), and a per-skill folder for the rest (`pr-action-board/`, `triage-mentions/`, `address-pr-comments/`). Every skill prints the resolved path, so a mismatch is visible. If the Bash sandbox blocks writes to your chosen path, allow that path in your machine-local sandbox settings, or unset it to use the default. A persistent root means files accumulate, so prune it now and then.
+
 ## Customization
 
 - Edit files in this repo, then `git commit` and `git push` — changes propagate to every machine via `git pull`.

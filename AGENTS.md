@@ -134,6 +134,10 @@ The workspace layout JSON is defined in two places — `cmux/configs/cmux.json.t
 
 Claude Code's fullscreen rendering mode (`/tui fullscreen` or `CLAUDE_CODE_NO_FLICKER=1`) captures mouse events, which breaks native terminal text selection. If a user reports this, point them to setting `CLAUDE_CODE_DISABLE_MOUSE_CLICKS=1` in `~/.zshrc` (requires Claude Code v2.1.195+). This disables click/drag/hover but keeps wheel scroll working. See README.md "Disabling Mouse Clicks in Claude Code" for the full instructions. This is a manual, per-machine step — `setup.sh` does not set it automatically.
 
+## Writing Temp Files From Skills
+
+Never hardcode `/tmp` in a skill. The human configures the temp root with the `FARTY_BOBO_TEMP_DIR` env var; skills resolve it with the canonical temp-root block (between the `# >>> temp-root` and `# <<< temp-root` markers) in the Temp Directory section of `skills/critique/SKILL.md`, and choose their own folder structure beneath it. Copy the block verbatim — `tests/test-temp-root.sh` fails if any skill's copy drifts or if a skill hardcodes a `/tmp/` path. Repo/branch-scoped artifacts use `$TEMP_ROOT/<repo-name>/<branch-name>`; other skills use `$TEMP_ROOT/<skill-name>/`. See README.md "Configuring the Temp Directory" for the user-facing setup.
+
 ## Committing rules on this repo
 
 This is a solo project repo that does not require PRs or reviews from other humans or other agents. It is okay to merge to main.

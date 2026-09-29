@@ -13,22 +13,35 @@ This skill orchestrates the planning of an entire epic by iterating through its 
 All planning artifacts (Epic Context file, epic summary) are written outside the repo to avoid accidental commits. At the start of every session, resolve the temp root:
 
 ```
-TEMP_DIR=/tmp/<repo-name>/<branch-name>
+TEMP_DIR=$TEMP_ROOT/<repo-name>/<branch-name>
 ```
 
 Resolve them with exactly these commands — one code path, correct both inside and outside a worktree:
 
 ```sh
+# >>> temp-root (canonical: skills/critique/SKILL.md; tests/test-temp-root.sh enforces sync)
+TEMP_ROOT="${FARTY_BOBO_TEMP_DIR:-/tmp}"
+case "$TEMP_ROOT" in
+  "~") TEMP_ROOT="$HOME" ;;
+  "~/"*) TEMP_ROOT="$HOME/${TEMP_ROOT#"~/"}" ;;
+esac
+TEMP_ROOT="${TEMP_ROOT%/}"
+case "$TEMP_ROOT" in
+  /?*) ;;
+  *) echo "WARNING: FARTY_BOBO_TEMP_DIR must be an absolute path (got '$FARTY_BOBO_TEMP_DIR'); falling back to /tmp" >&2
+     TEMP_ROOT=/tmp ;;
+esac
+# <<< temp-root
 repo_name=$(basename "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")")
 branch_name=$(git branch --show-current)
 # Detached HEAD returns an empty branch name.
 [ -n "$branch_name" ] || branch_name="detached-$(git rev-parse --short HEAD)"
-TEMP_DIR="/tmp/$repo_name/$branch_name"
+TEMP_DIR="$TEMP_ROOT/$repo_name/$branch_name"
 ```
 
-**Do not use `git rev-parse --show-toplevel`** (returns the worktree path, not the main repo root) **and do not use `git rev-parse --git-common-dir | xargs dirname`** — outside a worktree that yields `.`, so `TEMP_DIR` silently becomes `/tmp/./<branch-name>` and the repo-name namespacing is lost with no error.
+**Do not use `git rev-parse --show-toplevel`** (returns the worktree path, not the main repo root) **and do not use `git rev-parse --git-common-dir | xargs dirname`** — outside a worktree that yields `.`, so `TEMP_DIR` silently becomes `$TEMP_ROOT/./<branch-name>` and the repo-name namespacing is lost with no error.
 
-Create the directory if it does not exist (`mkdir -p "$TEMP_DIR/plans"`). Branch names contain slashes, so `$TEMP_DIR` is a nested path — `mkdir -p` is required, not optional. All references to `plans/` below refer to `$TEMP_DIR/plans/` — never a `plans/` directory inside the repo.
+Create the directory if it does not exist (`(umask 077; mkdir -p "$TEMP_DIR/plans")`). Branch names contain slashes, so `$TEMP_DIR` is a nested path — `mkdir -p` is required, not optional. If the temp-root block prints its `WARNING`, surface it to the human. Resolve once, echo the resolved absolute `$TEMP_DIR`, and use that literal path in every later call (see the Temp Directory section of `/critique`). All references to `plans/` below refer to `$TEMP_DIR/plans/` — never a `plans/` directory inside the repo.
 
 ---
 
