@@ -121,16 +121,21 @@ Requires Claude Code v2.1.195+. Restart any running Claude Code sessions for it 
 
 ## Configuring the Temp Directory
 
-Skills like `/plan-task`, `/critique`, `/review-multiple-prs`, `/pr-action-board`, `/triage-mentions`, and `/address-pr-comments` write plans, decisions, critiques, and triage files outside the repo. By default they go under `/tmp`, which macOS wipes on reboot. To put them somewhere else, set `FARTY_BOBO_TEMP_DIR` to an absolute path:
+Skills like `/plan-task`, `/critique`, `/review-multiple-prs`, `/pr-action-board`, `/triage-mentions`, and `/address-pr-comments` write plans, decisions, critiques, and triage files outside the repo. The root is `FARTY_BOBO_TEMP_DIR`; when it is unset, they fall back to `/tmp`, which macOS wipes on reboot.
 
-```sh
-echo 'export FARTY_BOBO_TEMP_DIR="$HOME/.farty-bobo/tmp"' >> ~/.zshrc
-source ~/.zshrc
+**Recommended: set it in the `env` block of `settings.json`.** Claude Code injects that block into every session regardless of how it was launched (terminal, IDE, Claude Desktop), so the skills always see it. This repo's `settings.json` already sets it:
+
+```json
+"env": {
+  "FARTY_BOBO_TEMP_DIR": "/Users/kinan/.farty-bobo/tmp"
+}
 ```
 
-You own the root. Each skill decides its own layout beneath it: `<repo>/<branch>/` for planning and review artifacts (e.g. `<repo>/<branch>/plans/`), and a per-skill folder for the rest (`pr-action-board/`, `triage-mentions/`, `address-pr-comments/`). A relative path or a quoted `~` is rejected with a warning and falls back to `/tmp`. Restart any running Claude Code sessions for it to take effect.
+Values in `settings.json` are literal — no `$HOME` or `~` expansion — so use a full absolute path. A relative path or a `~` is rejected with a warning and falls back to `/tmp`. Because `settings.json` is symlinked onto every machine, every machine gets the same path; on a machine where it isn't writable (e.g. a different username), the skill's `mkdir` fails and it tells you. Fix that machine by changing the value, or by replacing the symlink with a local copy (see Customization below). Restart any running Claude Code sessions after changing it.
 
-If the Bash sandbox blocks writes to your chosen path, allow that path in your machine-local sandbox settings, or keep the default. GUI-launched apps (e.g. Claude Desktop) don't read `~/.zshrc`, so there the skills fall back to `/tmp`. Every skill prints the resolved path, so a mismatch is visible. If you point it at a persistent location, files accumulate there, so prune it yourself now and then. This is set per machine in your shell profile, not in the shared `settings.json`, because the path is machine-specific.
+**Alternative: `~/.zshrc`.** If you don't use the shared `settings.json`, `export FARTY_BOBO_TEMP_DIR="$HOME/.farty-bobo/tmp"` also works, but only for sessions whose shell reads your profile. GUI-launched apps like Claude Desktop don't, and there the skills silently use `/tmp`.
+
+You own the root. Each skill decides its own layout beneath it: `<repo>/<branch>/` for planning and review artifacts (e.g. `<repo>/<branch>/plans/`), and a per-skill folder for the rest (`pr-action-board/`, `triage-mentions/`, `address-pr-comments/`). Every skill prints the resolved path, so a mismatch is visible. If the Bash sandbox blocks writes to your chosen path, allow that path in your machine-local sandbox settings, or unset it to use the default. A persistent root means files accumulate, so prune it now and then.
 
 ## Customization
 
