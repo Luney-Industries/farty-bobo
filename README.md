@@ -119,6 +119,19 @@ source ~/.zshrc
 
 Requires Claude Code v2.1.195+. Restart any running Claude Code sessions for it to take effect. This is env-var only — there's no `settings.json` equivalent. To disable *all* mouse capture including wheel scroll instead, use `CLAUDE_CODE_DISABLE_MOUSE=1` (takes precedence if both are set).
 
+## Configuring the Temp Directory
+
+Skills like `/plan-task`, `/critique`, `/review-multiple-prs`, `/pr-action-board`, `/triage-mentions`, and `/address-pr-comments` write plans, decisions, critiques, and triage files outside the repo. By default they go under `/tmp`, which macOS wipes on reboot. To put them somewhere else, set `FARTY_BOBO_TEMP_DIR` to an absolute path:
+
+```sh
+echo 'export FARTY_BOBO_TEMP_DIR="$HOME/.farty-bobo/tmp"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+You own the root. Each skill decides its own layout beneath it: `<repo>/<branch>/` for planning and review artifacts (e.g. `<repo>/<branch>/plans/`), and a per-skill folder for the rest (`pr-action-board/`, `triage-mentions/`, `address-pr-comments/`). A relative path or a quoted `~` is rejected with a warning and falls back to `/tmp`. Restart any running Claude Code sessions for it to take effect.
+
+If the Bash sandbox blocks writes to your chosen path, allow that path in your machine-local sandbox settings, or keep the default. GUI-launched apps (e.g. Claude Desktop) don't read `~/.zshrc`, so there the skills fall back to `/tmp`. Every skill prints the resolved path, so a mismatch is visible. If you point it at a persistent location, files accumulate there, so prune it yourself now and then. This is set per machine in your shell profile, not in the shared `settings.json`, because the path is machine-specific.
+
 ## Customization
 
 - Edit files in this repo, then `git commit` and `git push` — changes propagate to every machine via `git pull`.

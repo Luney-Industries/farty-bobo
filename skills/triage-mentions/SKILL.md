@@ -220,8 +220,25 @@ For each selected item, draft a response. Use all available context:
 Write all drafts to a temporary file at:
 
 ```
-/tmp/triage-mentions-{YYYYMMDD-HHMMSS}.md
+$TEMP_ROOT/triage-mentions/triage-mentions-{YYYYMMDD-HHMMSS}.md
 ```
+
+`$TEMP_ROOT` is the human's configured temp root (`FARTY_BOBO_TEMP_DIR`, defaulting to `/tmp`). Resolve it with exactly these commands (see the Temp Directory section of `/critique`):
+
+```sh
+# >>> temp-root (canonical: skills/critique/SKILL.md; tests/test-temp-root.sh enforces sync)
+TEMP_ROOT="${FARTY_BOBO_TEMP_DIR:-/tmp}"
+TEMP_ROOT="${TEMP_ROOT%/}"
+case "$TEMP_ROOT" in
+  /?*) ;;
+  *) echo "WARNING: FARTY_BOBO_TEMP_DIR must be an absolute path (got '$FARTY_BOBO_TEMP_DIR'); falling back to /tmp" >&2
+     TEMP_ROOT=/tmp ;;
+esac
+# <<< temp-root
+(umask 077; mkdir -p "$TEMP_ROOT/triage-mentions")
+```
+
+If the temp-root block prints its `WARNING`, surface it to the human. Resolve once, then use the literal absolute file path in every later Write/Edit/Bash call and in every spawned-agent prompt.
 
 (Include seconds to avoid collisions if the skill is re-invoked within the same minute.)
 
@@ -261,7 +278,7 @@ Note: the Decision section defaults to `APPROVE` so the human only has to change
 After writing the file, tell the human:
 
 ```
-Drafts written to: /tmp/triage-mentions-{timestamp}.md
+Drafts written to: {TEMP_ROOT}/triage-mentions/triage-mentions-{timestamp}.md
 
 Open the file, review each draft, and set the Decision for each item:
   APPROVE  — post as-is (default)
@@ -329,7 +346,7 @@ For any failures, surface the full error and ask the human how to proceed.
 
 - **Never post without human approval.** Every item goes through APPROVE before dispatch. No exceptions.
 - **Skip already-answered items.** If the human has already replied to a thread or comment after the mention (detected in Phase 2), do not include it in the triage list.
-- **Do not post the triage file to external systems.** The `/tmp` file is local. Never upload it to Slack, Jira, Confluence, Pastebin, or anywhere else.
+- **Do not post the triage file to external systems.** The triage file under `$TEMP_ROOT/triage-mentions/` is local. Never upload it to Slack, Jira, Confluence, Pastebin, or anywhere else.
 - **Respect the 7-day default.** Do not silently extend the window. If the human wants more history, they must say so.
 - **One round per invocation.** New mentions that arrive after Phase 2 are not included. Re-invoke the skill to pick them up.
 - **RETRY cap.** No item gets more than 2 revision rounds. If it's still not right, dismiss it — the human can always invoke `/comment-jira`, `/comment-confluence`, or `/post-on-slack` manually.

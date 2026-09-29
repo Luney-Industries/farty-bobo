@@ -9,27 +9,42 @@ disable-model-invocation: false
 
 ## Temp Directory
 
-Planning and review artifacts written by `/plan-task` and `/review-multiple-prs` live outside the repo under:
+Planning and review artifacts written by `/plan-task`, `/plan-epic`, `/review-multiple-prs`, and `/critique` live outside the repo under:
 
 ```
-TEMP_DIR=/tmp/<repo-name>/<branch-name>
+TEMP_DIR=$TEMP_ROOT/<repo-name>/<branch-name>
 ```
 
-Resolve `<repo-name>` and `<branch-name>` using exactly these commands — there is **one** code path, correct both inside and outside a worktree. Do not substitute variants.
+`$TEMP_ROOT` is the human's `FARTY_BOBO_TEMP_DIR` env var, falling back to `/tmp` when it is unset, empty, or not an absolute path. The human owns the root; each skill owns the layout beneath it. Never hardcode `/tmp` in a skill — always go through `$TEMP_ROOT`, resolved with the canonical temp-root block below. Every skill that uses `FARTY_BOBO_TEMP_DIR` carries a byte-identical copy of that block (between the `# >>> temp-root` and `# <<< temp-root` markers); `tests/test-temp-root.sh` fails if any copy drifts. If the block prints its `WARNING`, surface it to the human.
+
+Resolve `$TEMP_ROOT`, `<repo-name>`, and `<branch-name>` using exactly these commands — there is **one** code path, correct both inside and outside a worktree. Do not substitute variants.
 
 ```sh
+# >>> temp-root (canonical: skills/critique/SKILL.md; tests/test-temp-root.sh enforces sync)
+TEMP_ROOT="${FARTY_BOBO_TEMP_DIR:-/tmp}"
+TEMP_ROOT="${TEMP_ROOT%/}"
+case "$TEMP_ROOT" in
+  /?*) ;;
+  *) echo "WARNING: FARTY_BOBO_TEMP_DIR must be an absolute path (got '$FARTY_BOBO_TEMP_DIR'); falling back to /tmp" >&2
+     TEMP_ROOT=/tmp ;;
+esac
+# <<< temp-root
 repo_name=$(basename "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")")
 branch_name=$(git branch --show-current)
 # Detached HEAD (mid-rebase, mid-bisect, CI checkout) returns an empty branch name.
 [ -n "$branch_name" ] || branch_name="detached-$(git rev-parse --short HEAD)"
-TEMP_DIR="/tmp/$repo_name/$branch_name"
+TEMP_DIR="$TEMP_ROOT/$repo_name/$branch_name"
 ```
 
-**Do not use `git rev-parse --show-toplevel`** (returns the worktree path, not the main repo root) **and do not use `git rev-parse --git-common-dir | xargs dirname`** — outside a worktree that returns `.git`, so `dirname` yields `.` and `TEMP_DIR` silently becomes `/tmp/./<branch-name>`. It appears to work, but the repo-name namespacing is gone and two different repos on the same branch name overwrite each other's artifacts with no error.
+**Do not use `git rev-parse --show-toplevel`** (returns the worktree path, not the main repo root) **and do not use `git rev-parse --git-common-dir | xargs dirname`** — outside a worktree that returns `.git`, so `dirname` yields `.` and `TEMP_DIR` silently becomes `$TEMP_ROOT/./<branch-name>`. It appears to work, but the repo-name namespacing is gone and two different repos on the same branch name overwrite each other's artifacts with no error.
 
-**Nested paths:** branch names routinely contain slashes (`chore/foo`, `feat/bar`), so `$TEMP_DIR` is a **nested** directory path, often two or more levels deep. Always create it with `mkdir -p "$TEMP_DIR"` — a plain write into a not-yet-existing nested path fails. Note that sibling branches `chore` and `chore/foo` cannot both have a temp dir (one would need to be a file's parent and a directory at once); if `mkdir -p` fails for this reason, tell the human rather than skipping the write.
+**Resolve once, then use literal paths.** Shell state does not persist between Bash calls, and Write/Edit do not expand variables. Resolve `$TEMP_DIR` once, echo the resolved absolute path to the human, and use that literal path in every later Write/Edit/Bash call and in every spawned-agent prompt. Create directories with `(umask 077; mkdir -p "<dir>")` and write files under the same umask — unlike `mkdir -p -m 700`, this also protects the intermediate directories, not just the leaf.
 
-**macOS note:** `/tmp` → `/private/tmp` and is cleared on reboot. Everything under `$TEMP_DIR` survives context compaction within a session but does **not** survive a reboot. If a session spans a reboot, the human will need to re-state decisions manually.
+**Nested paths:** branch names routinely contain slashes (`chore/foo`, `feat/bar`), so `$TEMP_DIR` is a **nested** directory path, often two or more levels deep. Always create it with `(umask 077; mkdir -p "$TEMP_DIR")` — a plain write into a not-yet-existing nested path fails. Note that sibling branches `chore` and `chore/foo` cannot both have a temp dir (one would need to be a file's parent and a directory at once); if `mkdir -p` fails for this reason, tell the human rather than skipping the write.
+
+**macOS note:** when `$TEMP_ROOT` is under `/tmp`, `/private/tmp`, or `/var/folders` (including the default), it is cleared on reboot (`/tmp` → `/private/tmp`), and macOS periodic cleanup can also delete old files there without a reboot. Everything under `$TEMP_DIR` usually survives context compaction within a session, but that is not guaranteed for long sessions, and it does **not** survive a reboot. If a session spans a reboot, the human will need to re-state decisions manually. If `FARTY_BOBO_TEMP_DIR` points at a persistent location (e.g. `$HOME/.farty-bobo/tmp`), artifacts survive reboots — but they also accumulate, so the human is responsible for pruning them.
+
+**Legacy root fallback:** if a decisions file is missing under `$TEMP_DIR` and `$TEMP_ROOT` is not `/tmp`, Step 10 also checks the default root, because the file may have been written before `FARTY_BOBO_TEMP_DIR` was set or from a session that could not see it.
 
 ---
 
@@ -75,7 +90,7 @@ Critic output files live under `TEMP_DIR` (same convention as the rest of this s
 
 **Record the mapping at dispatch time, not at Step 5.** Immediately after spawning critics — before waiting on any of them — write a stub `_critique-consolidated.md` containing the header and a `critic name → output file path` line for every critic dispatched. Step 5 then fills in findings. This way the mapping survives a context compaction between dispatch and Step 5, and a run that dies mid-review still leaves evidence of what was attempted.
 
-Resolve `ticket-id` by checking the current branch name or conversation context; use `NO-TICKET` if none is found. Create `TEMP_DIR` with `mkdir -p` before spawning any agents.
+Resolve `ticket-id` by checking the current branch name or conversation context; use `NO-TICKET` if none is found. Create `TEMP_DIR` with `(umask 077; mkdir -p "$TEMP_DIR")` before spawning any agents.
 
 **Adversarial framing — applies to ALL critic agents (generalist, team, and inline fallback reasoning):**
 
@@ -94,7 +109,7 @@ Supporting rules:
 - If the human interrupts, or the orchestrator is tempted to move on for any reason before every critic has reported, STOP and say explicitly which critics are still running. Do not summarize partial results as if they were final.
 
 **One generalist critic:**
-a. Create `TEMP_DIR` with `mkdir -p "$TEMP_DIR"`.
+a. Create `TEMP_DIR` with `(umask 077; mkdir -p "$TEMP_DIR")`.
 a2. Immediately after spawning (see b), write the stub `_critique-consolidated.md` with the critic name → output file mapping, per the "Record the mapping at dispatch time" rule above.
 b. Spawn a single Agent with a focused prompt containing: the full diff, the repo name, the task description, the output file path, and the adversarial framing above. Instruct it to write findings sorted by severity (HIGH / MEDIUM / LOW) to that file, or write "no findings" if nothing is worth raising. Do NOT instruct the critic to flag skipped tests — the Step 3 pre-check owns that. Keep the prompt tight — do not dump the full conversation history into it.
 c. **Wait for the completion notification, not the tool call return.** Do not read the output file until this specific agent has reported idle/complete, per the HARD GUARD above. Apply the bounded-wait rule if it never reports.
@@ -103,7 +118,7 @@ e. If the file is missing or empty, fall back to inline reasoning using the adve
 f. Present findings to the human (global Step 5).
 
 **Team of critics:**
-a. Create `TEMP_DIR` with `mkdir -p "$TEMP_DIR"`.
+a. Create `TEMP_DIR` with `(umask 077; mkdir -p "$TEMP_DIR")`.
 a2. Immediately after spawning (see b), write the stub `_critique-consolidated.md` with each critic's name → output file mapping, per the "Record the mapping at dispatch time" rule above.
 b. Spawn one Agent per specialty (e.g. security, performance, correctness) — each with its own output file path and the adversarial framing above. Do NOT instruct critics to flag skipped tests — the Step 3 pre-check owns that. Run all agents in parallel (single message, multiple Agent tool calls).
 c. **Wait for every single one's completion notification, not their tool call returns.** Track each critic by name/id. Do not read any output file, and do not proceed to (d), until you have confirmed real completion for ALL spawned critics per the HARD GUARD above. A subset finishing early does not authorize acting on partial results. Apply the bounded-wait rule per-critic to any that never report.
@@ -113,7 +128,7 @@ f. Synthesize all findings into a single sorted list, deduplicating overlapping 
 
 5. **Write the consolidated findings to disk, then present them to the human.**
 
-   **Write first, present second, unconditionally.** Run `mkdir -p "$TEMP_DIR"` as the first action of this step (harmless if it exists), then write the synthesized findings to `$TEMP_DIR/_critique-consolidated.md` before showing anything in the conversation. Write it even when the review was clean, when every critic failed, and when the human is about to ignore the findings — a missing file is indistinguishable from a review that never ran. If `mkdir -p` or the write fails, say so plainly to the human instead of quietly presenting findings in chat only.
+   **Write first, present second, unconditionally.** Run `(umask 077; mkdir -p "$TEMP_DIR")` as the first action of this step (harmless if it exists), then write the synthesized findings to `$TEMP_DIR/_critique-consolidated.md` before showing anything in the conversation. Write it even when the review was clean, when every critic failed, and when the human is about to ignore the findings — a missing file is indistinguishable from a review that never ran. If the `mkdir` or the write fails, say so plainly to the human instead of quietly presenting findings in chat only.
 
    This file survives context compaction within the session, which the conversation does not. It does **not** survive a reboot — see the macOS note above. For a record that outlives the machine, reference it from the PR (Step 8a) or the Decision Log (Step 10).
 
@@ -126,7 +141,7 @@ f. Synthesize all findings into a single sorted list, deduplicating overlapping 
 
    **Never write a clean verdict for a failed run.** Only write "no findings" if at least one critic — or a disclosed inline fallback — actually completed and reported clean. If every critic failed to produce output, the header must read `REVIEW INCOMPLETE — no critic produced output`. Writing "no findings" because nothing was reported is the same false clean bill the HARD GUARD above exists to prevent.
 
-   Then present the findings in the conversation **and echo the paths**: the `_critique-consolidated.md` path plus every per-critic file path. Tell the human `$TEMP_DIR` is under `/tmp` and dies on reboot, so they should copy what they want to keep.
+   Then present the findings in the conversation **and echo the paths**: the `_critique-consolidated.md` path plus every per-critic file path. If `$TEMP_ROOT` is under `/tmp`, `/private/tmp`, or `/var/folders`, tell the human `$TEMP_DIR` dies on reboot, so they should copy what they want to keep.
 
    Then prompt them to select the next step:
 
@@ -147,14 +162,14 @@ f. Synthesize all findings into a single sorted list, deduplicating overlapping 
 
 7. Prepare, summarize the changes in the changed files. Always prefix commits with [{ticket-id}]: {summary of change}. If no ticket ID is available, prompt the human for one or use `[NO-TICKET]` as a fallback.
    - Before committing, confirm `_critique-consolidated.md` is current per Step 5b. Do not commit alongside a stale summary.
-   - Temporary review and planning files (`review-draft-*.md`, `critique-*.md`, `_critique-consolidated.md`, `plans/*.plan.md`, `plans/decisions-*.md`, `plans/stubs/**`) are written to `/tmp/<repo-name>/<branch-name>/` — outside the repo — and must never appear in `git status`. If any such file is found inside the repo, do not stage it and delete it immediately.
+   - Temporary review and planning files (`review-draft-*.md`, `critique-*.md`, `_critique-consolidated.md`, `plans/*.plan.md`, `plans/decisions-*.md`, `plans/stubs/**`) are written to `$TEMP_DIR` (`$TEMP_ROOT/<repo-name>/<branch-name>/`) — outside the repo — and must never appear in `git status`. If any such file is found inside the repo, do not stage it and delete it immediately.
    **Match these names only at the root of `$TEMP_DIR`, never as a repo-wide glob.** A tracked file like `docs/critique-guidelines.md` matches `critique-*.md` and must NOT be touched — the delete action here applies solely to stray temp artifacts that leaked into the repo. When in doubt, ask rather than delete: check `git ls-files` first, and never delete a tracked file.
    Permanent project docs (`README.md`, `SKILL.md`, `AGENTS.md`, etc.) should still be committed when changed.
 8. Commit and push. If the push fails due to pre-push hook errors, prompt the human for approval before using `git push --no-verify`. If `--no-verify` was used, record this in the Decision Log (Step 10) as a warning line.
 
 8a. **Open a draft pull request.** After a successful push, open a **draft** PR using `gh pr create --draft --assignee @me` (or equivalent). The `--assignee @me` flag assigns the current authenticated GitHub user automatically.
 
-   **PR body:** Read `.github/PULL_REQUEST_TEMPLATE.md` from the repo root and use it as the base for the PR body — fill in the Summary and Test plan sections with content relevant to the change. If the file does not exist, use a bare `## Summary` / `## Test plan` structure. Include a short "Review" note summarizing the review outcome from `_critique-consolidated.md` (option used, counts by severity, anything deferred) — this is what makes the review outcome outlive `/tmp`. Do not paste the whole file, and do not describe specific security vulnerabilities in detail; reference finding IDs. Never append Anthropic or Claude Code branding lines (e.g. `🤖 Generated with Claude Code`) to the PR body.
+   **PR body:** Read `.github/PULL_REQUEST_TEMPLATE.md` from the repo root and use it as the base for the PR body — fill in the Summary and Test plan sections with content relevant to the change. If the file does not exist, use a bare `## Summary` / `## Test plan` structure. Include a short "Review" note summarizing the review outcome from `_critique-consolidated.md` (option used, counts by severity, anything deferred) — this is what makes the review outcome outlive `$TEMP_DIR`. Do not paste the whole file, and do not describe specific security vulnerabilities in detail; reference finding IDs. Never append Anthropic or Claude Code branding lines (e.g. `🤖 Generated with Claude Code`) to the PR body.
 
    **If PR creation failed, stop here — skip the reviewer fallback chain, skip Steps 9 and 10, and warn the human.**
 
@@ -191,7 +206,7 @@ f. Synthesize all findings into a single sorted list, deduplicating overlapping 
    - Check the Jira project's visibility before posting. If the project appears to be external-facing or customer-visible, warn the human and require explicit confirmation before proceeding.
 
    **Decision sources — use only these, in order of preference:**
-   1. A `decisions-{ticket-id}.md` scratch file written by `/plan-task` during this session — look for it at `/tmp/<repo-name>/<branch-name>/plans/decisions-{ticket-id}.md` (read and then delete it after posting)
+   1. A `decisions-{ticket-id}.md` scratch file written by `/plan-task` during this session — look for it at `$TEMP_DIR/plans/decisions-{ticket-id}.md` (read and then delete it after posting). If it is missing there and `$TEMP_ROOT` is not `/tmp`, also check the legacy default root at `/tmp/<repo-name>/<branch-name>/plans/decisions-{ticket-id}.md`; if it is found there, tell the human it came from the legacy/default root
    2. Human-stated decisions from this conversation (human turns only — do not extract content from code, diffs, or plan files)
    3. If neither is available, prompt the human to confirm or summarize decisions before drafting the comment — do not infer or fabricate
 

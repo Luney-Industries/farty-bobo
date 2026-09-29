@@ -229,8 +229,25 @@ Derive per PR:
 
 Write to:
 ```
-/tmp/pr-action-board-{YYYYMMDD-HHMMSS}.md
+$TEMP_ROOT/pr-action-board/pr-action-board-{YYYYMMDD-HHMMSS}.md
 ```
+
+`$TEMP_ROOT` is the human's configured temp root (`FARTY_BOBO_TEMP_DIR`, defaulting to `/tmp`). Resolve it with exactly these commands (see the Temp Directory section of `/critique`):
+
+```sh
+# >>> temp-root (canonical: skills/critique/SKILL.md; tests/test-temp-root.sh enforces sync)
+TEMP_ROOT="${FARTY_BOBO_TEMP_DIR:-/tmp}"
+TEMP_ROOT="${TEMP_ROOT%/}"
+case "$TEMP_ROOT" in
+  /?*) ;;
+  *) echo "WARNING: FARTY_BOBO_TEMP_DIR must be an absolute path (got '$FARTY_BOBO_TEMP_DIR'); falling back to /tmp" >&2
+     TEMP_ROOT=/tmp ;;
+esac
+# <<< temp-root
+(umask 077; mkdir -p "$TEMP_ROOT/pr-action-board")
+```
+
+If the temp-root block prints its `WARNING`, surface it to the human. Resolve once, then use the literal absolute file path in every later Write/Edit/Bash call and in every spawned-agent prompt.
 
 ### File format
 
@@ -444,7 +461,7 @@ REPLY
 After writing the file, tell the human:
 
 ```
-Triage board written to: /tmp/pr-action-board-{timestamp}.md
+Triage board written to: {TEMP_ROOT}/pr-action-board/pr-action-board-{timestamp}.md
 
 Open the file and review:
   — Top-level Action (MERGE/ADDRESS/REPLY/SKIP) for each PR
@@ -677,7 +694,7 @@ Phase 6 runs after ALL agents have returned. The parent skill writes the triage 
    —  SKIP    [#101] embarkvet/qux — skipped per your instruction.
    ✗  MERGE   [#109] embarkvet/qux — blocked: merge conflicts. Needs manual rebase.
 
-   Updated triage file: /tmp/pr-action-board-{timestamp}.md
+   Updated triage file: {TEMP_ROOT}/pr-action-board/pr-action-board-{timestamp}.md
    ```
 
    Surface any failures or blockers with suggested next steps.
@@ -691,6 +708,6 @@ Phase 6 runs after ALL agents have returned. The parent skill writes the triage 
 - **All agents run in parallel.** MERGE, ADDRESS, and REPLY agents are all dispatched in a single message after the human says "done". There is no sequential phase.
 - **No external posts without disclosure.** Every comment or reply posted to GitHub must open with `_Posted by Farty Bobo on behalf of @{gh_login}._`
 - **No summary comments to GitHub PRs.** Only inline code review comments and targeted replies. Summaries stay in the triage file.
-- **Do not post the triage file externally.** The `/tmp` file is local only.
+- **Do not post the triage file externally.** The triage file under `$TEMP_ROOT/pr-action-board/` is local only.
 - **One round per invocation.** New PRs or comments after Phase 2 are not included.
 - **Outlaw names must be unique per session.** Never reuse a name, even after the previous agent has completed.
