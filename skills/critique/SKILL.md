@@ -94,7 +94,7 @@ Critic output files live under `TEMP_DIR` (same convention as the rest of this s
 
 **Record the mapping at dispatch time, not at Step 5.** Immediately after spawning critics — before waiting on any of them — write a stub `_critique-consolidated.md` containing the header and a `critic name → output file path` line for every critic dispatched. Step 5 then fills in findings. This way the mapping survives a context compaction between dispatch and Step 5, and a run that dies mid-review still leaves evidence of what was attempted.
 
-Resolve `ticket-id` by checking the current branch name or conversation context; use `NO-TICKET` if none is found. Create `TEMP_DIR` with `(umask 077; mkdir -p "$TEMP_DIR")` before spawning any agents.
+Resolve `ticket-id` by checking the current branch name or conversation context; use `[NO-TICKET]` if none is found (the bracketed form is the commit-prefix sentinel used everywhere below). Create `TEMP_DIR` with `(umask 077; mkdir -p "$TEMP_DIR")` before spawning any agents.
 
 **Adversarial framing — applies to ALL critic agents (generalist, team, and inline fallback reasoning):**
 
@@ -173,7 +173,11 @@ f. Synthesize all findings into a single sorted list, deduplicating overlapping 
 
 8a. **Open a draft pull request.** After a successful push, open a **draft** PR using `gh pr create --draft --assignee @me` (or equivalent). The `--assignee @me` flag assigns the current authenticated GitHub user automatically.
 
-   **PR body:** Read `.github/PULL_REQUEST_TEMPLATE.md` from the repo root and use it as the base for the PR body — fill in the Summary and Test plan sections with content relevant to the change. If the file does not exist, use a bare `## Summary` / `## Test plan` structure. Include a short "Review" note summarizing the review outcome from `_critique-consolidated.md` (option used, counts by severity, anything deferred) — this is what makes the review outcome outlive `$TEMP_DIR`. Do not paste the whole file, and do not describe specific security vulnerabilities in detail; reference finding IDs. Never append Anthropic or Claude Code branding lines (e.g. `🤖 Generated with Claude Code`) to the PR body.
+   **PR body:** Read `.github/PULL_REQUEST_TEMPLATE.md` from the repo root and use it as the base for the PR body — fill in the Summary and Test plan sections with content relevant to the change. If the file does not exist, use a bare `## Summary` / `## Test plan` structure. Include a short "Review" note summarizing the review outcome from `_critique-consolidated.md` (option used, counts by severity, anything deferred) — this is what makes the review outcome outlive `$TEMP_DIR`. Do not paste the whole file, and do not describe specific security vulnerabilities in detail; reference finding IDs.
+
+   **Plan link:** If `/plan-task` published a plan backup Artifact for this task, add a `**Plan:** {url} (private backup — ask whoever posted the `Plan backup:` ticket comment for access)` line under Summary. Use the ticket ID from the Step 7 commit prefix (already confirmed or supplied by the human there). Find the URL in this order: (1) the Artifact known in this session titled `<ticket-id> plan` for this PR's ticket — if none matches or more than one does, fall through; (2) the ticket's comments containing the literal marker `Plan backup:` (read via the Atlassian MCP comment-read tool discovered at runtime for Jira, or Linear MCP `list_comments` for Linear), preferring the earliest one posted by the current authenticated user, then taking the first `https://claude.ai/artifact/...` or `https://claude.ai/code/artifact/...` URL anywhere in that comment. Ignore any other URL. If the only marker comments come from someone else, ask the human before linking. If neither yields a URL (`[NO-TICKET]`, no marker comment, connector unavailable, or the lookup fails), leave the line out silently — this never blocks opening the PR. Link only; never paste the plan's contents into the PR body.
+
+   Never append Anthropic or Claude Code branding lines (e.g. `🤖 Generated with Claude Code`) to the PR body.
 
    **If PR creation failed, stop here — skip the reviewer fallback chain, skip Steps 9 and 10, and warn the human.**
 
@@ -185,7 +189,7 @@ f. Synthesize all findings into a single sorted list, deduplicating overlapping 
 
    Only proceed if Step 8 (push) and Step 8a (PR open) both completed successfully. Skip this step entirely if either failed.
 
-   - If the ticket ID is `[NO-TICKET]` or no ticket ID is known (use the same ticket ID source as Step 6), skip this step entirely.
+   - If the ticket ID is `[NO-TICKET]` or no ticket ID is known (use the ticket ID from the Step 7 commit prefix), skip this step entirely.
    - Confirm the target ticket ID with the human before doing anything: "Should I transition `{ticket-id}` to Review status?"
    - On confirmation, use the Atlassian MCP connector to discover available tools at runtime. Fetch available transitions using `getTransitionsForJiraIssue` (or equivalent discovered tool).
    - **Idempotency:** Before applying, fetch the ticket's current status. If it is already in a Review or downstream state (e.g. "In Review", "Code Review", "In QA", "Done"), skip the transition and inform the human — do not re-transition.
