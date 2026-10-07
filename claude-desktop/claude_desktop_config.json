@@ -23,10 +23,6 @@
     "posthog": {
       "command": "/bin/bash",
       "args": ["-c", "~/.claude/scripts/posthog-mcp.sh"]
-    },
-    "vercel": {
-      "command": "/bin/bash",
-      "args": ["-c", "~/.claude/scripts/vercel-mcp.sh"]
     }
   },
   "preferences": {
