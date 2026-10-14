@@ -181,7 +181,7 @@ f. Synthesize all findings into a single sorted list, deduplicating overlapping 
 
    **If PR creation failed, stop here — skip the reviewer fallback chain, skip Steps 9 and 10, and warn the human.**
 
-   Otherwise, capture the PR number from the `gh pr create` output (it appears in the PR URL, e.g. `https://github.com/{owner}/{repo}/pull/{number}`). Then **immediately call the `Skill` tool with `skill: "request-github-review"` and `args: "{PR number}"`** — do NOT hand this off to the human, do NOT mention it as a next step, do NOT skip it. This is a required automated step. `/request-github-review` will request automated review and then run the bot feedback loop — waiting for CI and bot reviews, addressing comments, resolving CI failures, and marking draft PRs ready for review when done.
+   Otherwise, capture the PR number from the `gh pr create` output (it appears in the PR URL, e.g. `https://github.com/{owner}/{repo}/pull/{number}`). Then **immediately call the `Skill` tool with `skill: "request-github-review"` and `args: "{PR number}"`** — do NOT hand this off to the human, do NOT mention it as a next step, do NOT skip it. Invoking it is a required automated step; the reviewer choice belongs to the human, and their pick — Skip included — must be honored. If a reviewer is picked, `/request-github-review` requests it and then runs the bot feedback loop — waiting for CI and bot reviews, addressing comments, resolving CI failures, and marking draft PRs ready for review when done. If the human picks Skip, it requests no review, runs no bot loop, and marks the draft PR ready immediately.
 
    *(End of Step 8a)*
 

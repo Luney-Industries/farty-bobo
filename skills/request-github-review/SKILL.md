@@ -1,6 +1,6 @@
 ---
 name: request-github-review
-description: Request an automated review on a GitHub PR. Prompts the human to pick a reviewer (Copilot, Claude, Codex on GitHub, or Codex within Claude Code). Also runs the bot feedback loop: waits for CI/bot reviews, addresses comments, resolves CI failures, then marks draft PRs ready for review.
+description: Request an automated review on a GitHub PR. Prompts the human to pick a reviewer (Copilot, Claude, Codex on GitHub, or Codex within Claude Code), or skip bot review and just mark the PR ready. Also runs the bot feedback loop: waits for CI/bot reviews, addresses comments, resolves CI failures, then marks draft PRs ready for review.
 model: haiku
 disable-model-invocation: false
 ---
@@ -28,9 +28,10 @@ A PR number. Detect it from context (e.g. recent `gh pr create` output, current 
    2. Claude — Posts an @claude review trigger comment on the PR
    3. Codex on GitHub — Posts a @codex review trigger comment on the PR
    4. Codex within Claude Code — Runs /codex:adversarial-review locally to find critical bugs and vulnerabilities that may have escaped /critique
+   5. Skip — No bot review; mark the PR ready for review
    ```
 
-   Wait for the human's selection before proceeding. The human may pick more than one. If no response is given or context is ambiguous, ask again — do not guess.
+   Wait for the human's selection before proceeding. The human may pick more than one of options 1–4. Treat "none", "no review", "skip", or similar as option 5. Option 5 is exclusive — if it is picked alongside any other option, ask the human which they meant rather than guessing. If no response is given or context is ambiguous, ask again — do not guess.
 
 2. **Execute each selected option.**
 
@@ -81,9 +82,21 @@ A PR number. Detect it from context (e.g. recent `gh pr create` output, current 
 
    Wait for the run to complete. Surface the verbatim Codex output — do not paraphrase, summarize, or reformat it.
 
-3. **If every selected option errored before issuing its action**, stop and report what failed. (Note: Options 2 and 3 always exit 0 if the `gh` command itself ran — "no review queued" is not an error.)
+   **Option 5 — Skip:**
+
+   Request no reviewer and skip Steps 3 and 4 entirely — there is no bot feedback to wait for.
+
+   - **Nested invocation** (the re-entrancy chain described in Step 4): request nothing and do not touch draft state — the outer loop's Step 4c owns marking the PR ready. Go straight to Output.
+   - Otherwise, check draft state with `gh pr view {number} --json isDraft --jq '.isDraft'`. If it is `true`, run `gh pr ready {number}`; if `false`, leave it. If `gh pr ready` fails, surface the error verbatim. If the probe fails, surface the error verbatim and do not guess the draft state.
+   - Then run `gh pr checks {number}` once to report CI state — passing, failing, pending, or no checks. Do not wait on it and never let it gate marking ready. It exits non-zero for failing or pending checks; that is a CI state, not an error. Surface the output verbatim only if the command itself failed (auth, network, unknown PR).
+
+3. **If the human picked Skip (option 5), skip this step.**
+
+   **If every selected option errored before issuing its action**, stop and report what failed. (Note: Options 2 and 3 always exit 0 if the `gh` command itself ran — "no review queued" is not an error.)
 
 4. **Bot review loop.**
+
+   **If the human picked Skip (option 5), skip Step 4 entirely.**
 
    **If this skill is already running in a parent invocation (i.e. the call chain is `/request-github-review` → `/address-pr-comments` or `/resolve-ci-failures` → `/critique` → `/request-github-review`), skip Step 4 entirely** — the bot loop is already active and re-entering it would cause an infinite loop.
 
@@ -135,5 +148,6 @@ Report the outcome per selected option:
 - **Claude:** "Posted `@claude review` on PR #{number} — review will be queued if the bot is installed."
 - **Codex on GitHub:** "Posted `@codex review` on PR #{number} — review will be queued if the bot is installed."
 - **Codex within Claude Code:** Surface the verbatim output from `/codex:adversarial-review`. Do not paraphrase or reformat.
+- **Skip:** "Skipped bot review — PR #{number} is marked ready for review. CI: {passing|failing|pending|no checks}." (or "…was already ready for review…" if it was not a draft). In a nested invocation: "Skipped bot review — the outer review loop will mark PR #{number} ready." If the `isDraft` probe, `gh pr ready`, or `gh pr checks` failed, report that error verbatim in place of the matching part of the success line.
 - Surface errors verbatim for any option that failed unexpectedly.
-- For all PRs: report when the bot loop completes and feedback has been addressed. For draft PRs specifically, also report when the PR is marked ready (or when CI still needs attention).
+- For all PRs except Skip: report when the bot loop completes and feedback has been addressed. For draft PRs specifically, also report when the PR is marked ready (or when CI still needs attention).
