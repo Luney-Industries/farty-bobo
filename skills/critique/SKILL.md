@@ -100,6 +100,14 @@ Resolve `ticket-id` by checking the current branch name or conversation context;
 
 Every critic must be prompted as an adversary, not a passive reviewer. Include this instruction in every critic's prompt, and apply it when falling back to inline reasoning: "You are an adversarial critic. Assume the code is wrong until proven otherwise. Your job is to attack this change — find bugs, security holes, broken invariants, missing edge cases, and bad design decisions. Be aggressive. Do not give the benefit of the doubt. If something looks suspicious, call it out. Findings that survive scrutiny are more valuable than polite observations."
 
+**Portable Markdown — applies to ALL critic output files and the consolidated file:**
+
+Humans open these files in editor previews (Cursor, VS Code, Obsidian), and some previews stop rendering everything after a code fence that never closes. Paste this block verbatim into every critic's prompt, and follow it when writing `_critique-consolidated.md`:
+
+> Write portable Markdown. Never put a fenced code block inside a list item: end the list, leave a blank line, and put the fence at column 0. When the fenced content itself contains backticks, fence it with a longer run of backticks or with tildes; the opening and closing fences must match in character, length, and indentation. Leave a blank line before and after every heading, list, table, and fence. No raw HTML. Never leave a bare `$` in prose: shell variables and dollar amounts go in backticks. Backtick identifiers, paths, and any `<`, `>`, `|`, `*`, `_`, or `$` meant literally; Markdown emphasis is fine.
+
+When inlining another skill's or critic's output into the consolidated file (e.g. `/modularity:review` findings), normalize it to these rules instead of pasting it verbatim.
+
 **HARD GUARD — NO ASSUMPTIONS, EVER. Read this before spawning any critic.**
 
 The orchestrator MUST NOT proceed to the "Present findings" step until it has **positive, explicit confirmation** that every spawned critic has finished. Critics have taken longer than expected in the past, and the orchestrator wrongly reported "nothing found" while a critic was still working — this led the human astray with a false clean bill. That failure mode is now explicitly forbidden. This is the one rule everything below hinges on:
@@ -115,7 +123,7 @@ Supporting rules:
 **One generalist critic:**
 a. Create `TEMP_DIR` with `(umask 077; mkdir -p "$TEMP_DIR")`.
 a2. Immediately after spawning (see b), write the stub `_critique-consolidated.md` with the critic name → output file mapping, per the "Record the mapping at dispatch time" rule above.
-b. Spawn a single Agent with a focused prompt containing: the full diff, the repo name, the task description, the output file path, and the adversarial framing above. Instruct it to write findings sorted by severity (HIGH / MEDIUM / LOW) to that file, or write "no findings" if nothing is worth raising. Do NOT instruct the critic to flag skipped tests — the Step 3 pre-check owns that. Keep the prompt tight — do not dump the full conversation history into it.
+b. Spawn a single Agent with a focused prompt containing: the full diff, the repo name, the task description, the output file path, the adversarial framing above, and the Portable Markdown rules above (verbatim). Instruct it to write findings sorted by severity (HIGH / MEDIUM / LOW) to that file, or write "no findings" if nothing is worth raising. Do NOT instruct the critic to flag skipped tests — the Step 3 pre-check owns that. Keep the prompt tight — do not dump the full conversation history into it.
 c. **Wait for the completion notification, not the tool call return.** Do not read the output file until this specific agent has reported idle/complete, per the HARD GUARD above. Apply the bounded-wait rule if it never reports.
 d. Once completion is confirmed (or the bounded wait expires), read the output file.
 e. If the file is missing or empty, fall back to inline reasoning using the adversarial framing above — and **disclose to the human** that the critic produced no output file (and, if applicable, that the bounded wait expired) and this review is inline-only.
@@ -124,7 +132,7 @@ f. Present findings to the human (global Step 5).
 **Team of critics:**
 a. Create `TEMP_DIR` with `(umask 077; mkdir -p "$TEMP_DIR")`.
 a2. Immediately after spawning (see b), write the stub `_critique-consolidated.md` with each critic's name → output file mapping, per the "Record the mapping at dispatch time" rule above.
-b. Spawn one Agent per specialty (e.g. security, performance, correctness) — each with its own output file path and the adversarial framing above. Do NOT instruct critics to flag skipped tests — the Step 3 pre-check owns that. Run all agents in parallel (single message, multiple Agent tool calls).
+b. Spawn one Agent per specialty (e.g. security, performance, correctness) — each with its own output file path, the adversarial framing above, and the Portable Markdown rules above (verbatim). Do NOT instruct critics to flag skipped tests — the Step 3 pre-check owns that. Run all agents in parallel (single message, multiple Agent tool calls).
 c. **Wait for every single one's completion notification, not their tool call returns.** Track each critic by name/id. Do not read any output file, and do not proceed to (d), until you have confirmed real completion for ALL spawned critics per the HARD GUARD above. A subset finishing early does not authorize acting on partial results. Apply the bounded-wait rule per-critic to any that never report.
 d. Once all critics have confirmed completion (or their bounded waits expire), read all output files.
 e. For any file that is missing or empty, fall back to inline reasoning for that specialty using the adversarial framing above — and **disclose to the human** which critics produced no output (and, if applicable, which bounded waits expired) and that those portions are inline-only.
