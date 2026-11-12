@@ -9,12 +9,15 @@
 # Mimics the real gh / GitHub behaviors the scripts depend on:
 #   - A search term containing a space is sent quoted -> GitHub rejects the query.
 #   - A "-qualifier" passed before "--" is parsed as an unknown flag.
-#   - "-author:<login>" excludes that author; "--owner" scopes to an org.
+#   - "-author:<login>" excludes that author; "--owner" scopes to an org (case-insensitive).
 #   - Unknown endpoints (e.g. "repos///issues/1/comments") return HTTP 404.
 #   - PR activity endpoints with no fixture entry return [].
+#   - A fixture value {"_pages": [[...], [...]]} is printed as one array per page,
+#     like `gh api --paginate`.
 #
 # Env:
-#   GH_STUB_FAIL_SEARCH=1  make every `gh search` call fail with HTTP 503
+#   GH_STUB_FAIL_SEARCH=1         make every `gh search` call fail with HTTP 503
+#   GH_STUB_FAIL_ENDPOINT=<path>  make `gh api <path>` fail with HTTP 500
 #   GH_STUB_LOG=<file>     append each invocation's argv to <file>
 set -uo pipefail
 
@@ -72,7 +75,7 @@ cmd_search_prs() {
   [[ -n "$key" ]] && fixture_has "$key" && result=$(fixture_get "$key")
   echo "$result" | jq -c --arg ex "$exclude_author" --arg owner "$owner" '
     map(select($ex == "" or .author.login != $ex))
-    | map(select($owner == "" or (.repository.nameWithOwner | startswith($owner + "/"))))'
+    | map(select($owner == "" or (.repository.nameWithOwner | ascii_downcase | startswith(($owner | ascii_downcase) + "/"))))'
 }
 
 cmd_api() {
@@ -94,6 +97,11 @@ cmd_api() {
     esac
   done
 
+  if [[ -n "${GH_STUB_FAIL_ENDPOINT:-}" && "$endpoint" == "$GH_STUB_FAIL_ENDPOINT" ]]; then
+    echo "gh: Server Error (HTTP 500): $endpoint" >&2
+    exit 1
+  fi
+
   local body
   if [[ "$endpoint" == "graphql" ]]; then
     local key="graphql:${f_owner}/${f_repo}#${f_number}"
@@ -110,6 +118,11 @@ cmd_api() {
     echo "gh: Not Found (HTTP 404)" >&2
     echo '{"message":"Not Found","documentation_url":"https://docs.github.com/rest","status":"404"}'
     exit 1
+  fi
+
+  if echo "$body" | jq -e 'type == "object" and has("_pages")' >/dev/null; then
+    echo "$body" | jq -c '._pages[]'
+    return
   fi
 
   if [[ -n "$jq_expr" ]]; then

@@ -23,9 +23,19 @@
 #   3839  commenter: unanswered issue-comment reply          -> included
 #   3840  commenter: I had the last word                     -> excluded
 #   3850  commenter: my own PR                               -> excluded
+#   3851  commenter: my own PR, author login cased "Kinano"  -> excluded
+#   null  notification with a null subject.url               -> skipped, run continues
+#   ../1  notification whose owner is a dot-only segment     -> skipped with a WARN
+#   5008  pulls/N returns a non-JSON body                    -> skipped with a WARN, run continues
+#   5002  team_mention for a team missing from teams_json,
+#         after an earlier comment of mine                   -> included (fail open)
+#   5003  mention edited into a comment after my reply       -> included, mentioned_at = edit time
+#   5004  answered, then "ops@kinano.dev" in a later comment -> excluded
+#   5005  answered, then @kinano only in inline/fenced code  -> excluded
+#   5006  answered, but pulls/N/comments fails to load       -> included with a WARN (fail open)
+#   5007  answer is on page 2 of issues/N/comments           -> excluded
 #
 # Run: bash tests/test-pr-action-board-scripts.sh
-#      PR_ACTION_BOARD_STRICT=1 bash tests/test-pr-action-board-scripts.sh   # pending tests count as failures
 # Exits 0 on all-pass, non-zero on any failure.
 
 set -uo pipefail
@@ -40,12 +50,10 @@ TEAMS_JSON='[{"slug":"eng","name":"Eng","mention":"@youth-inc/eng"}]'
 
 PASS=0
 FAIL=0
-PENDING=0
 FAILED_TESTS=()
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
-YELLOW='\033[0;33m'
 RESET='\033[0m'
 
 WORK_DIR="$(mktemp -d)"
@@ -62,8 +70,9 @@ run_mention() {
 }
 
 run_thread_reply() {
+  # $1 = org scope (defaults to $ORG)
   PATH="$FAKE_GH_DIR:$PATH" GH_STUB_LOG="$WORK_DIR/gh.log" \
-    "$SCRIPTS/find-thread-reply-prs.sh" "$LOGIN" "$ORG" >"$OUT" 2>"$ERR"
+    "$SCRIPTS/find-thread-reply-prs.sh" "$LOGIN" "${1-$ORG}" >"$OUT" 2>"$ERR"
 }
 
 # ── Assertions ─────────────────────────────────────────────────────────────
@@ -114,21 +123,14 @@ run_test() {
   fi
 }
 
-# Acceptance tests written ahead of the fix. Reported, but not counted as
-# failures unless PR_ACTION_BOARD_STRICT=1. The fix PR switches these to run_test.
-run_pending() {
-  local name="$1"
-  if [[ "${PR_ACTION_BOARD_STRICT:-}" == "1" ]]; then
-    run_test "$name"
-    return
+assert_exit_code() {
+  local expected="$1" actual="$2"
+  if [[ "$actual" != "$expected" ]]; then
+    echo "  FAIL: expected exit code $expected, got $actual"
+    echo "  stderr:"
+    sed 's/^/    | /' "$ERR" | head -20
+    return 1
   fi
-  printf "→ %s\n" "$name"
-  if "$name" >/dev/null; then
-    printf "  ${YELLOW}PENDING (already passes; switch to run_test)${RESET}\n"
-  else
-    printf "  ${YELLOW}PENDING${RESET}\n"
-  fi
-  PENDING=$((PENDING + 1))
 }
 
 # ── find-thread-reply-prs.sh ───────────────────────────────────────────────
@@ -166,6 +168,26 @@ test_thread_reply_surfaces_search_errors() {
   assert_json_array || return 1
   assert_jq "stdout is an empty array" 'length == 0' || return 1
   assert_stderr_contains "HTTP 503: search is temporarily unavailable" || return 1
+}
+
+test_thread_reply_author_guard_ignores_case() {
+  # Given: search returns #3851, kinano's own PR with the author login cased "Kinano",
+  #        which slips past the case-sensitive server-side -author: filter in the fake gh
+  # When
+  run_thread_reply
+  # Then
+  assert_json_array || return 1
+  assert_jq "#3851 (own PR, different case) is not returned" 'map(.number) | index(3851) == null' || return 1
+}
+
+test_thread_reply_rejects_invalid_org_scope() {
+  # Given: an org scope with a space and a leading dash
+  # When
+  run_thread_reply "-bad org"
+  local rc=$?
+  # Then
+  assert_exit_code 2 "$rc" || return 1
+  assert_stderr_contains "Usage:" || return 1
 }
 
 # ── find-mention-prs.sh ────────────────────────────────────────────────────
@@ -271,22 +293,138 @@ test_mention_surfaces_search_errors() {
   assert_jq "notification-sourced #4004 is still returned" 'map(.number) | index(4004) != null' || return 1
 }
 
+test_mention_survives_malformed_notification_and_pr_payload() {
+  # Given: a PullRequest notification with a null subject.url, and #5008 whose pulls/N
+  #        response is not JSON
+  # When
+  run_mention "$ORG"
+  local rc=$?
+  # Then
+  assert_exit_code 0 "$rc" || return 1
+  assert_json_array || return 1
+  assert_jq "#4004 is still returned" 'map(.number) | index(4004) != null' || return 1
+  assert_jq "#5008 is not returned" 'map(.number) | index(5008) == null' || return 1
+  assert_stderr_contains "pull/5008" || return 1
+}
+
+test_mention_rejects_dot_only_owner() {
+  # Given: a notification whose subject.url is repos/../youthinc/pulls/1
+  : >"$WORK_DIR/gh.log"
+  # When
+  run_mention "$ORG"
+  # Then
+  assert_json_array || return 1
+  assert_stderr_contains "unexpected URL" || return 1
+  if grep -q 'repos/\.\./' "$WORK_DIR/gh.log"; then
+    echo "  FAIL: an API path was built from a dot-only owner"
+    return 1
+  fi
+}
+
+test_mention_keeps_unknown_team_mention_after_my_comment() {
+  # Given: on #5002 kinano left a drive-by comment at 08:00, then hank pinged
+  #        @youth-inc/parent (not in teams_json) at 10:00, and a team_mention notification arrived
+  # When
+  run_mention "$ORG"
+  # Then
+  assert_json_array || return 1
+  assert_jq "#5002 is returned as a team mention" '.[] | select(.number == 5002) | .reason == "team-mention"' || return 1
+  assert_jq "no internal fields leak into the output" 'map(has("from_notification")) | any | not' || return 1
+}
+
+test_mention_uses_edit_time_for_edited_mentions() {
+  # Given: on #5003 ivy's 08:00 comment was edited at 12:00 to add @kinano;
+  #        kinano's only comment is at 10:00
+  # When
+  run_mention "$ORG"
+  # Then
+  assert_json_array || return 1
+  assert_jq "#5003 is returned with mentioned_at = edit time" \
+    '.[] | select(.number == 5003) | .mentioned_at == "2026-11-10T12:00:00Z"' || return 1
+}
+
+test_mention_ignores_email_and_code_handles() {
+  # Given: kinano answered #5004 and #5005 at 09:00; at 10:00 jack wrote "ops@kinano.dev" on #5004
+  #        and @kinano only inside an inline code span and a fenced block on #5005
+  # When
+  run_mention "$ORG"
+  # Then
+  assert_json_array || return 1
+  assert_jq "#5004 (email) is not returned" 'map(.number) | index(5004) == null' || return 1
+  assert_jq "#5005 (code only) is not returned" 'map(.number) | index(5005) == null' || return 1
+}
+
+test_mention_org_scope_is_case_insensitive() {
+  # Given: notifications and search hits are owned by "youth-inc"
+  # When: scoped to "YOUTH-INC"
+  run_mention "YOUTH-INC"
+  # Then
+  assert_json_array || return 1
+  assert_jq "notification-sourced #4004 is returned" 'map(.number) | index(4004) != null' || return 1
+  assert_jq "search-sourced #4006 is returned" 'map(.number) | index(4006) != null' || return 1
+}
+
+test_mention_keeps_pr_when_activity_fetch_fails() {
+  # Given: kinano answered #5006 in an issue comment, but pulls/5006/comments fails
+  export GH_STUB_FAIL_ENDPOINT="repos/youth-inc/youthinc/pulls/5006/comments"
+  # When
+  run_mention "$ORG"
+  unset GH_STUB_FAIL_ENDPOINT
+  # Then
+  assert_json_array || return 1
+  assert_jq "#5006 is kept (fail open)" 'map(.number) | index(5006) != null' || return 1
+  assert_stderr_contains "pulls/5006/comments" || return 1
+  # And without the failure it is excluded as answered
+  run_mention "$ORG"
+  assert_jq "#5006 is excluded when all activity loads" 'map(.number) | index(5006) == null' || return 1
+}
+
+test_mention_merges_paginated_activity() {
+  # Given: #5007's issue comments come back as two pages; kinano's answer is on page 2
+  # When
+  run_mention "$ORG"
+  # Then
+  assert_json_array || return 1
+  assert_jq "#5007 is not returned" 'map(.number) | index(5007) == null' || return 1
+}
+
+test_mention_rejects_invalid_org_scope() {
+  # Given: an org scope with a space and a leading dash
+  # When
+  run_mention "-bad org"
+  local rc=$?
+  # Then
+  assert_exit_code 2 "$rc" || return 1
+  assert_stderr_contains "Usage:" || return 1
+}
+
 # ── Register ───────────────────────────────────────────────────────────────
 
-run_pending test_thread_reply_returns_unresponded_prs
-run_pending test_thread_reply_excludes_answered_and_own_prs
-run_pending test_thread_reply_surfaces_search_errors
-run_pending test_mention_excludes_merged_and_closed_prs
-run_pending test_mention_mentioned_at_is_actual_mention_time
-run_pending test_mention_excludes_pr_answered_in_issue_comment
-run_pending test_mention_excludes_pr_answered_in_review_thread
-run_pending test_mention_excludes_pr_answered_in_review_body
-run_pending test_mention_respects_org_scope_for_notifications
-run_pending test_mention_search_hits_are_normalized_and_checked
-run_pending test_mention_team_search_hit_included
-run_pending test_mention_surfaces_search_errors
+run_test test_thread_reply_returns_unresponded_prs
+run_test test_thread_reply_excludes_answered_and_own_prs
+run_test test_thread_reply_surfaces_search_errors
+run_test test_mention_excludes_merged_and_closed_prs
+run_test test_mention_mentioned_at_is_actual_mention_time
+run_test test_mention_excludes_pr_answered_in_issue_comment
+run_test test_mention_excludes_pr_answered_in_review_thread
+run_test test_mention_excludes_pr_answered_in_review_body
+run_test test_mention_respects_org_scope_for_notifications
+run_test test_mention_search_hits_are_normalized_and_checked
+run_test test_mention_team_search_hit_included
+run_test test_mention_surfaces_search_errors
+run_test test_thread_reply_author_guard_ignores_case
+run_test test_thread_reply_rejects_invalid_org_scope
+run_test test_mention_survives_malformed_notification_and_pr_payload
+run_test test_mention_rejects_dot_only_owner
+run_test test_mention_keeps_unknown_team_mention_after_my_comment
+run_test test_mention_uses_edit_time_for_edited_mentions
+run_test test_mention_ignores_email_and_code_handles
+run_test test_mention_org_scope_is_case_insensitive
+run_test test_mention_keeps_pr_when_activity_fetch_fails
+run_test test_mention_merges_paginated_activity
+run_test test_mention_rejects_invalid_org_scope
 
-printf "\n${GREEN}%d passed${RESET}, ${RED}%d failed${RESET}, ${YELLOW}%d pending${RESET}\n" "$PASS" "$FAIL" "$PENDING"
+printf "\n${GREEN}%d passed${RESET}, ${RED}%d failed${RESET}\n" "$PASS" "$FAIL"
 if (( FAIL > 0 )); then
   printf "Failed tests:\n"
   for t in "${FAILED_TESTS[@]}"; do printf "  - %s\n" "$t"; done

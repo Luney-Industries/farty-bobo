@@ -1,138 +1,1004 @@
 {
   "_comment": "Fixtures for tests/test-pr-action-board-scripts.sh. User = kinano, org = youth-inc, team = @youth-inc/eng. See the scenario table at the top of the test file.",
-
-  "notifications?all=true": [
-    { "reason": "mention", "updated_at": "2026-11-04T14:51:09Z",
-      "subject": { "type": "PullRequest", "url": "https://api.github.com/repos/youth-inc/youthinc/pulls/3621" },
-      "repository": { "owner": { "login": "youth-inc" } } },
-    { "reason": "mention", "updated_at": "2026-10-20T09:00:00Z",
-      "subject": { "type": "PullRequest", "url": "https://api.github.com/repos/youth-inc/youthinc/pulls/3537" },
-      "repository": { "owner": { "login": "youth-inc" } } },
-    { "reason": "mention", "updated_at": "2026-11-05T12:00:30Z",
-      "subject": { "type": "PullRequest", "url": "https://api.github.com/repos/youth-inc/youthinc/pulls/4001" },
-      "repository": { "owner": { "login": "youth-inc" } } },
-    { "reason": "mention", "updated_at": "2026-11-06T11:00:10Z",
-      "subject": { "type": "PullRequest", "url": "https://api.github.com/repos/youth-inc/youthinc/pulls/4002" },
-      "repository": { "owner": { "login": "youth-inc" } } },
-    { "reason": "mention", "updated_at": "2026-11-07T11:00:05Z",
-      "subject": { "type": "PullRequest", "url": "https://api.github.com/repos/youth-inc/youthinc/pulls/4003" },
-      "repository": { "owner": { "login": "youth-inc" } } },
-    { "reason": "mention", "updated_at": "2026-11-08T12:00:00Z",
-      "subject": { "type": "PullRequest", "url": "https://api.github.com/repos/youth-inc/youthinc/pulls/4004" },
-      "repository": { "owner": { "login": "youth-inc" } } },
-    { "reason": "mention", "updated_at": "2026-11-08T13:00:00Z",
-      "subject": { "type": "PullRequest", "url": "https://api.github.com/repos/other-org/otherrepo/pulls/77" },
-      "repository": { "owner": { "login": "other-org" } } },
-    { "reason": "subscribed", "updated_at": "2026-11-08T14:00:00Z",
-      "subject": { "type": "PullRequest", "url": "https://api.github.com/repos/youth-inc/youthinc/pulls/4100" },
-      "repository": { "owner": { "login": "youth-inc" } } }
-  ],
-
-  "repos/youth-inc/youthinc/pulls/3621": { "number": 3621, "state": "closed", "merged_at": "2026-11-05T08:00:00Z", "user": { "login": "alice" }, "title": "Merged PR that mentioned kinano", "body": "", "created_at": "2026-11-03T08:00:00Z", "updated_at": "2026-11-05T08:00:00Z" },
+  "repos/youth-inc/youthinc/pulls/3621": {
+    "number": 3621,
+    "state": "closed",
+    "merged_at": "2026-11-05T08:00:00Z",
+    "user": {
+      "login": "alice"
+    },
+    "title": "Merged PR that mentioned kinano",
+    "body": "",
+    "created_at": "2026-11-03T08:00:00Z",
+    "updated_at": "2026-11-05T08:00:00Z"
+  },
   "repos/youth-inc/youthinc/issues/3621/comments": [
-    { "user": { "login": "alice" }, "created_at": "2026-11-04T14:00:00Z", "body": "@kinano can you check the migration?" },
-    { "user": { "login": "kinano" }, "created_at": "2026-11-04T14:50:45Z", "body": "Looks fine." }
+    {
+      "user": {
+        "login": "alice"
+      },
+      "created_at": "2026-11-04T14:00:00Z",
+      "body": "@kinano can you check the migration?"
+    },
+    {
+      "user": {
+        "login": "kinano"
+      },
+      "created_at": "2026-11-04T14:50:45Z",
+      "body": "Looks fine."
+    }
   ],
-
-  "repos/youth-inc/youthinc/pulls/3537": { "number": 3537, "state": "closed", "merged_at": null, "user": { "login": "bob" }, "title": "Closed PR that mentioned kinano", "body": "", "created_at": "2026-10-18T08:00:00Z", "updated_at": "2026-10-20T09:00:00Z" },
+  "repos/youth-inc/youthinc/pulls/3537": {
+    "number": 3537,
+    "state": "closed",
+    "merged_at": null,
+    "user": {
+      "login": "bob"
+    },
+    "title": "Closed PR that mentioned kinano",
+    "body": "",
+    "created_at": "2026-10-18T08:00:00Z",
+    "updated_at": "2026-10-20T09:00:00Z"
+  },
   "repos/youth-inc/youthinc/issues/3537/comments": [
-    { "user": { "login": "bob" }, "created_at": "2026-10-19T10:00:00Z", "body": "@kinano thoughts?" }
+    {
+      "user": {
+        "login": "bob"
+      },
+      "created_at": "2026-10-19T10:00:00Z",
+      "body": "@kinano thoughts?"
+    }
   ],
-
-  "repos/youth-inc/youthinc/pulls/4001": { "number": 4001, "state": "open", "merged_at": null, "user": { "login": "alice" }, "title": "Answered in an issue comment", "body": "", "created_at": "2026-11-05T08:00:00Z", "updated_at": "2026-11-05T12:00:30Z" },
+  "repos/youth-inc/youthinc/pulls/4001": {
+    "number": 4001,
+    "state": "open",
+    "merged_at": null,
+    "user": {
+      "login": "alice"
+    },
+    "title": "Answered in an issue comment",
+    "body": "",
+    "created_at": "2026-11-05T08:00:00Z",
+    "updated_at": "2026-11-05T12:00:30Z"
+  },
   "repos/youth-inc/youthinc/issues/4001/comments": [
-    { "user": { "login": "alice" }, "created_at": "2026-11-05T10:00:00Z", "body": "@kinano is this index needed?" },
-    { "user": { "login": "kinano" }, "created_at": "2026-11-05T12:00:00Z", "body": "Yes, for the lookup." }
+    {
+      "user": {
+        "login": "alice"
+      },
+      "created_at": "2026-11-05T10:00:00Z",
+      "body": "@kinano is this index needed?"
+    },
+    {
+      "user": {
+        "login": "kinano"
+      },
+      "created_at": "2026-11-05T12:00:00Z",
+      "body": "Yes, for the lookup."
+    }
   ],
-
-  "repos/youth-inc/youthinc/pulls/4002": { "number": 4002, "state": "open", "merged_at": null, "user": { "login": "bob" }, "title": "Answered in a review thread", "body": "", "created_at": "2026-11-06T08:00:00Z", "updated_at": "2026-11-06T11:00:10Z" },
+  "repos/youth-inc/youthinc/pulls/4002": {
+    "number": 4002,
+    "state": "open",
+    "merged_at": null,
+    "user": {
+      "login": "bob"
+    },
+    "title": "Answered in a review thread",
+    "body": "",
+    "created_at": "2026-11-06T08:00:00Z",
+    "updated_at": "2026-11-06T11:00:10Z"
+  },
   "repos/youth-inc/youthinc/issues/4002/comments": [
-    { "user": { "login": "bob" }, "created_at": "2026-11-06T10:00:00Z", "body": "@kinano does the retry logic look right to you?" }
+    {
+      "user": {
+        "login": "bob"
+      },
+      "created_at": "2026-11-06T10:00:00Z",
+      "body": "@kinano does the retry logic look right to you?"
+    }
   ],
   "repos/youth-inc/youthinc/pulls/4002/comments": [
-    { "user": { "login": "kinano" }, "created_at": "2026-11-06T11:00:00Z", "body": "Retry looks right, see note on backoff." }
+    {
+      "user": {
+        "login": "kinano"
+      },
+      "created_at": "2026-11-06T11:00:00Z",
+      "body": "Retry looks right, see note on backoff."
+    }
   ],
-
-  "repos/youth-inc/youthinc/pulls/4003": { "number": 4003, "state": "open", "merged_at": null, "user": { "login": "carol" }, "title": "Answered in a review body", "body": "", "created_at": "2026-11-07T08:00:00Z", "updated_at": "2026-11-07T11:00:05Z" },
+  "repos/youth-inc/youthinc/pulls/4003": {
+    "number": 4003,
+    "state": "open",
+    "merged_at": null,
+    "user": {
+      "login": "carol"
+    },
+    "title": "Answered in a review body",
+    "body": "",
+    "created_at": "2026-11-07T08:00:00Z",
+    "updated_at": "2026-11-07T11:00:05Z"
+  },
   "repos/youth-inc/youthinc/pulls/4003/comments": [
-    { "user": { "login": "carol" }, "created_at": "2026-11-07T10:00:00Z", "body": "@kinano is this safe to run twice?" }
+    {
+      "user": {
+        "login": "carol"
+      },
+      "created_at": "2026-11-07T10:00:00Z",
+      "body": "@kinano is this safe to run twice?"
+    }
   ],
   "repos/youth-inc/youthinc/pulls/4003/reviews": [
-    { "user": { "login": "kinano" }, "submitted_at": "2026-11-07T11:00:00Z", "state": "COMMENTED", "body": "Idempotent, yes." }
+    {
+      "user": {
+        "login": "kinano"
+      },
+      "submitted_at": "2026-11-07T11:00:00Z",
+      "state": "COMMENTED",
+      "body": "Idempotent, yes."
+    }
   ],
-
-  "repos/youth-inc/youthinc/pulls/4004": { "number": 4004, "state": "open", "merged_at": null, "user": { "login": "dave" }, "title": "Unanswered mention after my last comment", "body": "", "created_at": "2026-11-08T08:00:00Z", "updated_at": "2026-11-08T12:00:00Z" },
+  "repos/youth-inc/youthinc/pulls/4004": {
+    "number": 4004,
+    "state": "open",
+    "merged_at": null,
+    "user": {
+      "login": "dave"
+    },
+    "title": "Unanswered mention after my last comment",
+    "body": "",
+    "created_at": "2026-11-08T08:00:00Z",
+    "updated_at": "2026-11-08T12:00:00Z"
+  },
   "repos/youth-inc/youthinc/issues/4004/comments": [
-    { "user": { "login": "kinano" }, "created_at": "2026-11-08T09:00:00Z", "body": "Left a couple of notes." },
-    { "user": { "login": "dave" }, "created_at": "2026-11-08T10:00:00Z", "body": "@kinano addressed, can you re-check?" },
-    { "user": { "login": "erin" }, "created_at": "2026-11-08T12:00:00Z", "body": "CI is green now." }
+    {
+      "user": {
+        "login": "kinano"
+      },
+      "created_at": "2026-11-08T09:00:00Z",
+      "body": "Left a couple of notes."
+    },
+    {
+      "user": {
+        "login": "dave"
+      },
+      "created_at": "2026-11-08T10:00:00Z",
+      "body": "@kinano addressed, can you re-check?"
+    },
+    {
+      "user": {
+        "login": "erin"
+      },
+      "created_at": "2026-11-08T12:00:00Z",
+      "body": "CI is green now."
+    }
   ],
-
-  "repos/other-org/otherrepo/pulls/77": { "number": 77, "state": "open", "merged_at": null, "user": { "login": "zed" }, "title": "Other org PR", "body": "", "created_at": "2026-11-08T08:00:00Z", "updated_at": "2026-11-08T13:00:00Z" },
+  "repos/other-org/otherrepo/pulls/77": {
+    "number": 77,
+    "state": "open",
+    "merged_at": null,
+    "user": {
+      "login": "zed"
+    },
+    "title": "Other org PR",
+    "body": "",
+    "created_at": "2026-11-08T08:00:00Z",
+    "updated_at": "2026-11-08T13:00:00Z"
+  },
   "repos/other-org/otherrepo/issues/77/comments": [
-    { "user": { "login": "zed" }, "created_at": "2026-11-08T13:00:00Z", "body": "@kinano ping" }
+    {
+      "user": {
+        "login": "zed"
+      },
+      "created_at": "2026-11-08T13:00:00Z",
+      "body": "@kinano ping"
+    }
   ],
-
   "search:mentions:kinano": [
-    { "number": 4006, "title": "Body mention, never answered", "url": "https://github.com/youth-inc/youthinc/pull/4006",
-      "author": { "login": "frank" }, "repository": { "name": "youthinc", "nameWithOwner": "youth-inc/youthinc" },
-      "createdAt": "2026-11-09T08:00:00Z", "updatedAt": "2026-11-09T08:30:00Z", "body": "cc @kinano for the schema change" },
-    { "number": 4007, "title": "Search hit already answered", "url": "https://github.com/youth-inc/youthinc/pull/4007",
-      "author": { "login": "gina" }, "repository": { "name": "youthinc", "nameWithOwner": "youth-inc/youthinc" },
-      "createdAt": "2026-11-09T08:00:00Z", "updatedAt": "2026-11-09T10:00:00Z", "body": "" },
-    { "number": 4009, "title": "My own PR that mentions me", "url": "https://github.com/youth-inc/youthinc/pull/4009",
-      "author": { "login": "kinano" }, "repository": { "name": "youthinc", "nameWithOwner": "youth-inc/youthinc" },
-      "createdAt": "2026-11-09T08:00:00Z", "updatedAt": "2026-11-09T11:00:00Z", "body": "note to self @kinano" }
+    {
+      "number": 4006,
+      "title": "Body mention, never answered",
+      "url": "https://github.com/youth-inc/youthinc/pull/4006",
+      "author": {
+        "login": "frank"
+      },
+      "repository": {
+        "name": "youthinc",
+        "nameWithOwner": "youth-inc/youthinc"
+      },
+      "createdAt": "2026-11-09T08:00:00Z",
+      "updatedAt": "2026-11-09T08:30:00Z",
+      "body": "cc @kinano for the schema change"
+    },
+    {
+      "number": 4007,
+      "title": "Search hit already answered",
+      "url": "https://github.com/youth-inc/youthinc/pull/4007",
+      "author": {
+        "login": "gina"
+      },
+      "repository": {
+        "name": "youthinc",
+        "nameWithOwner": "youth-inc/youthinc"
+      },
+      "createdAt": "2026-11-09T08:00:00Z",
+      "updatedAt": "2026-11-09T10:00:00Z",
+      "body": ""
+    },
+    {
+      "number": 4009,
+      "title": "My own PR that mentions me",
+      "url": "https://github.com/youth-inc/youthinc/pull/4009",
+      "author": {
+        "login": "kinano"
+      },
+      "repository": {
+        "name": "youthinc",
+        "nameWithOwner": "youth-inc/youthinc"
+      },
+      "createdAt": "2026-11-09T08:00:00Z",
+      "updatedAt": "2026-11-09T11:00:00Z",
+      "body": "note to self @kinano"
+    }
   ],
-  "repos/youth-inc/youthinc/pulls/4006": { "number": 4006, "state": "open", "merged_at": null, "user": { "login": "frank" }, "title": "Body mention, never answered", "body": "cc @kinano for the schema change", "created_at": "2026-11-09T08:00:00Z", "updated_at": "2026-11-09T08:30:00Z" },
-  "repos/youth-inc/youthinc/pulls/4007": { "number": 4007, "state": "open", "merged_at": null, "user": { "login": "gina" }, "title": "Search hit already answered", "body": "", "created_at": "2026-11-09T08:00:00Z", "updated_at": "2026-11-09T10:00:00Z" },
+  "repos/youth-inc/youthinc/pulls/4006": {
+    "number": 4006,
+    "state": "open",
+    "merged_at": null,
+    "user": {
+      "login": "frank"
+    },
+    "title": "Body mention, never answered",
+    "body": "cc @kinano for the schema change",
+    "created_at": "2026-11-09T08:00:00Z",
+    "updated_at": "2026-11-09T08:30:00Z"
+  },
+  "repos/youth-inc/youthinc/pulls/4007": {
+    "number": 4007,
+    "state": "open",
+    "merged_at": null,
+    "user": {
+      "login": "gina"
+    },
+    "title": "Search hit already answered",
+    "body": "",
+    "created_at": "2026-11-09T08:00:00Z",
+    "updated_at": "2026-11-09T10:00:00Z"
+  },
   "repos/youth-inc/youthinc/issues/4007/comments": [
-    { "user": { "login": "gina" }, "created_at": "2026-11-09T09:00:00Z", "body": "@kinano quick look?" },
-    { "user": { "login": "kinano" }, "created_at": "2026-11-09T10:00:00Z", "body": "LGTM" }
+    {
+      "user": {
+        "login": "gina"
+      },
+      "created_at": "2026-11-09T09:00:00Z",
+      "body": "@kinano quick look?"
+    },
+    {
+      "user": {
+        "login": "kinano"
+      },
+      "created_at": "2026-11-09T10:00:00Z",
+      "body": "LGTM"
+    }
   ],
-  "repos/youth-inc/youthinc/pulls/4009": { "number": 4009, "state": "open", "merged_at": null, "user": { "login": "kinano" }, "title": "My own PR that mentions me", "body": "note to self @kinano", "created_at": "2026-11-09T08:00:00Z", "updated_at": "2026-11-09T11:00:00Z" },
-
+  "repos/youth-inc/youthinc/pulls/4009": {
+    "number": 4009,
+    "state": "open",
+    "merged_at": null,
+    "user": {
+      "login": "kinano"
+    },
+    "title": "My own PR that mentions me",
+    "body": "note to self @kinano",
+    "created_at": "2026-11-09T08:00:00Z",
+    "updated_at": "2026-11-09T11:00:00Z"
+  },
   "search:team:youth-inc/eng": [
-    { "number": 4008, "title": "Team mention, never answered", "url": "https://github.com/youth-inc/youthinc/pull/4008",
-      "author": { "login": "hank" }, "repository": { "name": "youthinc", "nameWithOwner": "youth-inc/youthinc" },
-      "createdAt": "2026-11-10T08:00:00Z", "updatedAt": "2026-11-10T09:00:00Z", "body": "" }
+    {
+      "number": 4008,
+      "title": "Team mention, never answered",
+      "url": "https://github.com/youth-inc/youthinc/pull/4008",
+      "author": {
+        "login": "hank"
+      },
+      "repository": {
+        "name": "youthinc",
+        "nameWithOwner": "youth-inc/youthinc"
+      },
+      "createdAt": "2026-11-10T08:00:00Z",
+      "updatedAt": "2026-11-10T09:00:00Z",
+      "body": ""
+    }
   ],
-  "repos/youth-inc/youthinc/pulls/4008": { "number": 4008, "state": "open", "merged_at": null, "user": { "login": "hank" }, "title": "Team mention, never answered", "body": "", "created_at": "2026-11-10T08:00:00Z", "updated_at": "2026-11-10T09:00:00Z" },
+  "repos/youth-inc/youthinc/pulls/4008": {
+    "number": 4008,
+    "state": "open",
+    "merged_at": null,
+    "user": {
+      "login": "hank"
+    },
+    "title": "Team mention, never answered",
+    "body": "",
+    "created_at": "2026-11-10T08:00:00Z",
+    "updated_at": "2026-11-10T09:00:00Z"
+  },
   "repos/youth-inc/youthinc/issues/4008/comments": [
-    { "user": { "login": "hank" }, "created_at": "2026-11-10T09:00:00Z", "body": "@youth-inc/eng please review the queue change" }
+    {
+      "user": {
+        "login": "hank"
+      },
+      "created_at": "2026-11-10T09:00:00Z",
+      "body": "@youth-inc/eng please review the queue change"
+    }
   ],
-
   "search:commenter:kinano": [
-    { "number": 3841, "title": "Unanswered review-thread reply", "url": "https://github.com/youth-inc/youthinc/pull/3841",
-      "author": { "login": "alice" }, "repository": { "name": "youthinc", "nameWithOwner": "youth-inc/youthinc" }, "updatedAt": "2026-11-10T11:00:00Z" },
-    { "number": 3840, "title": "I had the last word", "url": "https://github.com/youth-inc/youthinc/pull/3840",
-      "author": { "login": "alice" }, "repository": { "name": "youthinc", "nameWithOwner": "youth-inc/youthinc" }, "updatedAt": "2026-11-10T12:00:00Z" },
-    { "number": 3839, "title": "Unanswered issue-comment reply", "url": "https://github.com/youth-inc/youthinc/pull/3839",
-      "author": { "login": "bob" }, "repository": { "name": "youthinc", "nameWithOwner": "youth-inc/youthinc" }, "updatedAt": "2026-11-10T10:00:00Z" },
-    { "number": 3850, "title": "My own PR", "url": "https://github.com/youth-inc/youthinc/pull/3850",
-      "author": { "login": "kinano" }, "repository": { "name": "youthinc", "nameWithOwner": "youth-inc/youthinc" }, "updatedAt": "2026-11-10T13:00:00Z" }
+    {
+      "number": 3841,
+      "title": "Unanswered review-thread reply",
+      "url": "https://github.com/youth-inc/youthinc/pull/3841",
+      "author": {
+        "login": "alice"
+      },
+      "repository": {
+        "name": "youthinc",
+        "nameWithOwner": "youth-inc/youthinc"
+      },
+      "updatedAt": "2026-11-10T11:00:00Z"
+    },
+    {
+      "number": 3840,
+      "title": "I had the last word",
+      "url": "https://github.com/youth-inc/youthinc/pull/3840",
+      "author": {
+        "login": "alice"
+      },
+      "repository": {
+        "name": "youthinc",
+        "nameWithOwner": "youth-inc/youthinc"
+      },
+      "updatedAt": "2026-11-10T12:00:00Z"
+    },
+    {
+      "number": 3839,
+      "title": "Unanswered issue-comment reply",
+      "url": "https://github.com/youth-inc/youthinc/pull/3839",
+      "author": {
+        "login": "bob"
+      },
+      "repository": {
+        "name": "youthinc",
+        "nameWithOwner": "youth-inc/youthinc"
+      },
+      "updatedAt": "2026-11-10T10:00:00Z"
+    },
+    {
+      "number": 3850,
+      "title": "My own PR",
+      "url": "https://github.com/youth-inc/youthinc/pull/3850",
+      "author": {
+        "login": "kinano"
+      },
+      "repository": {
+        "name": "youthinc",
+        "nameWithOwner": "youth-inc/youthinc"
+      },
+      "updatedAt": "2026-11-10T13:00:00Z"
+    },
+    {
+      "number": 3851,
+      "title": "My own PR, login cased differently",
+      "url": "https://github.com/youth-inc/youthinc/pull/3851",
+      "author": {
+        "login": "Kinano"
+      },
+      "repository": {
+        "name": "youthinc",
+        "nameWithOwner": "youth-inc/youthinc"
+      },
+      "updatedAt": "2026-11-10T14:00:00Z"
+    }
   ],
-  "graphql:youth-inc/youthinc#3841": { "data": { "repository": { "pullRequest": { "reviewThreads": { "nodes": [
-    { "id": "T_3841", "isResolved": false, "isOutdated": false, "comments": { "nodes": [
-      { "databaseId": 1, "author": { "login": "kinano" }, "createdAt": "2026-11-10T10:00:00Z", "body": "Why a new table?", "path": "db/schema.rb", "line": 10 },
-      { "databaseId": 2, "author": { "login": "alice" }, "createdAt": "2026-11-10T11:00:00Z", "body": "Isolation from the legacy flow.", "path": "db/schema.rb", "line": 10 }
-    ] } }
-  ] } } } } },
+  "graphql:youth-inc/youthinc#3841": {
+    "data": {
+      "repository": {
+        "pullRequest": {
+          "reviewThreads": {
+            "nodes": [
+              {
+                "id": "T_3841",
+                "isResolved": false,
+                "isOutdated": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "databaseId": 1,
+                      "author": {
+                        "login": "kinano"
+                      },
+                      "createdAt": "2026-11-10T10:00:00Z",
+                      "body": "Why a new table?",
+                      "path": "db/schema.rb",
+                      "line": 10
+                    },
+                    {
+                      "databaseId": 2,
+                      "author": {
+                        "login": "alice"
+                      },
+                      "createdAt": "2026-11-10T11:00:00Z",
+                      "body": "Isolation from the legacy flow.",
+                      "path": "db/schema.rb",
+                      "line": 10
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
   "repos/youth-inc/youthinc/issues/3839/comments": [
-    { "user": { "login": "kinano" }, "created_at": "2026-11-10T09:00:00Z", "body": "Should this be behind a flag?" },
-    { "user": { "login": "bob" }, "created_at": "2026-11-10T10:00:00Z", "body": "Good call, which flag?" }
+    {
+      "user": {
+        "login": "kinano"
+      },
+      "created_at": "2026-11-10T09:00:00Z",
+      "body": "Should this be behind a flag?"
+    },
+    {
+      "user": {
+        "login": "bob"
+      },
+      "created_at": "2026-11-10T10:00:00Z",
+      "body": "Good call, which flag?"
+    }
   ],
-  "graphql:youth-inc/youthinc#3840": { "data": { "repository": { "pullRequest": { "reviewThreads": { "nodes": [
-    { "id": "T_3840", "isResolved": false, "isOutdated": false, "comments": { "nodes": [
-      { "databaseId": 3, "author": { "login": "kinano" }, "createdAt": "2026-11-10T10:00:00Z", "body": "Rename?", "path": "app/a.rb", "line": 1 },
-      { "databaseId": 4, "author": { "login": "alice" }, "createdAt": "2026-11-10T11:00:00Z", "body": "To what?", "path": "app/a.rb", "line": 1 },
-      { "databaseId": 5, "author": { "login": "kinano" }, "createdAt": "2026-11-10T12:00:00Z", "body": "FooService.", "path": "app/a.rb", "line": 1 }
-    ] } }
-  ] } } } } },
-  "graphql:youth-inc/youthinc#3850": { "data": { "repository": { "pullRequest": { "reviewThreads": { "nodes": [
-    { "id": "T_3850", "isResolved": false, "isOutdated": false, "comments": { "nodes": [
-      { "databaseId": 6, "author": { "login": "kinano" }, "createdAt": "2026-11-10T10:00:00Z", "body": "Self note", "path": "app/b.rb", "line": 2 },
-      { "databaseId": 7, "author": { "login": "alice" }, "createdAt": "2026-11-10T13:00:00Z", "body": "Reply on your own PR", "path": "app/b.rb", "line": 2 }
-    ] } }
-  ] } } } } }
+  "graphql:youth-inc/youthinc#3840": {
+    "data": {
+      "repository": {
+        "pullRequest": {
+          "reviewThreads": {
+            "nodes": [
+              {
+                "id": "T_3840",
+                "isResolved": false,
+                "isOutdated": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "databaseId": 3,
+                      "author": {
+                        "login": "kinano"
+                      },
+                      "createdAt": "2026-11-10T10:00:00Z",
+                      "body": "Rename?",
+                      "path": "app/a.rb",
+                      "line": 1
+                    },
+                    {
+                      "databaseId": 4,
+                      "author": {
+                        "login": "alice"
+                      },
+                      "createdAt": "2026-11-10T11:00:00Z",
+                      "body": "To what?",
+                      "path": "app/a.rb",
+                      "line": 1
+                    },
+                    {
+                      "databaseId": 5,
+                      "author": {
+                        "login": "kinano"
+                      },
+                      "createdAt": "2026-11-10T12:00:00Z",
+                      "body": "FooService.",
+                      "path": "app/a.rb",
+                      "line": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "graphql:youth-inc/youthinc#3850": {
+    "data": {
+      "repository": {
+        "pullRequest": {
+          "reviewThreads": {
+            "nodes": [
+              {
+                "id": "T_3850",
+                "isResolved": false,
+                "isOutdated": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "databaseId": 6,
+                      "author": {
+                        "login": "kinano"
+                      },
+                      "createdAt": "2026-11-10T10:00:00Z",
+                      "body": "Self note",
+                      "path": "app/b.rb",
+                      "line": 2
+                    },
+                    {
+                      "databaseId": 7,
+                      "author": {
+                        "login": "alice"
+                      },
+                      "createdAt": "2026-11-10T13:00:00Z",
+                      "body": "Reply on your own PR",
+                      "path": "app/b.rb",
+                      "line": 2
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "notifications?all=true&participating=true&per_page=100": [
+    {
+      "reason": "mention",
+      "updated_at": "2026-11-04T14:51:09Z",
+      "subject": {
+        "type": "PullRequest",
+        "url": "https://api.github.com/repos/youth-inc/youthinc/pulls/3621"
+      },
+      "repository": {
+        "owner": {
+          "login": "youth-inc"
+        }
+      }
+    },
+    {
+      "reason": "mention",
+      "updated_at": "2026-10-20T09:00:00Z",
+      "subject": {
+        "type": "PullRequest",
+        "url": "https://api.github.com/repos/youth-inc/youthinc/pulls/3537"
+      },
+      "repository": {
+        "owner": {
+          "login": "youth-inc"
+        }
+      }
+    },
+    {
+      "reason": "mention",
+      "updated_at": "2026-11-05T12:00:30Z",
+      "subject": {
+        "type": "PullRequest",
+        "url": "https://api.github.com/repos/youth-inc/youthinc/pulls/4001"
+      },
+      "repository": {
+        "owner": {
+          "login": "youth-inc"
+        }
+      }
+    },
+    {
+      "reason": "mention",
+      "updated_at": "2026-11-06T11:00:10Z",
+      "subject": {
+        "type": "PullRequest",
+        "url": "https://api.github.com/repos/youth-inc/youthinc/pulls/4002"
+      },
+      "repository": {
+        "owner": {
+          "login": "youth-inc"
+        }
+      }
+    },
+    {
+      "reason": "mention",
+      "updated_at": "2026-11-07T11:00:05Z",
+      "subject": {
+        "type": "PullRequest",
+        "url": "https://api.github.com/repos/youth-inc/youthinc/pulls/4003"
+      },
+      "repository": {
+        "owner": {
+          "login": "youth-inc"
+        }
+      }
+    },
+    {
+      "reason": "mention",
+      "updated_at": "2026-11-08T12:00:00Z",
+      "subject": {
+        "type": "PullRequest",
+        "url": "https://api.github.com/repos/youth-inc/youthinc/pulls/4004"
+      },
+      "repository": {
+        "owner": {
+          "login": "youth-inc"
+        }
+      }
+    },
+    {
+      "reason": "mention",
+      "updated_at": "2026-11-08T13:00:00Z",
+      "subject": {
+        "type": "PullRequest",
+        "url": "https://api.github.com/repos/other-org/otherrepo/pulls/77"
+      },
+      "repository": {
+        "owner": {
+          "login": "other-org"
+        }
+      }
+    },
+    {
+      "reason": "subscribed",
+      "updated_at": "2026-11-08T14:00:00Z",
+      "subject": {
+        "type": "PullRequest",
+        "url": "https://api.github.com/repos/youth-inc/youthinc/pulls/4100"
+      },
+      "repository": {
+        "owner": {
+          "login": "youth-inc"
+        }
+      }
+    },
+    {
+      "reason": "mention",
+      "updated_at": "2026-11-11T00:00:00Z",
+      "subject": {
+        "type": "PullRequest",
+        "url": null
+      },
+      "repository": {
+        "owner": {
+          "login": "youth-inc"
+        }
+      }
+    },
+    {
+      "reason": "mention",
+      "updated_at": "2026-11-11T00:00:00Z",
+      "subject": {
+        "type": "PullRequest",
+        "url": "https://api.github.com/repos/../youthinc/pulls/1"
+      },
+      "repository": {
+        "owner": {
+          "login": "youth-inc"
+        }
+      }
+    },
+    {
+      "reason": "mention",
+      "updated_at": "2026-11-11T00:00:00Z",
+      "subject": {
+        "type": "PullRequest",
+        "url": "https://api.github.com/repos/youth-inc/youthinc/pulls/5008"
+      },
+      "repository": {
+        "owner": {
+          "login": "youth-inc"
+        }
+      }
+    },
+    {
+      "reason": "team_mention",
+      "updated_at": "2026-11-11T00:00:00Z",
+      "subject": {
+        "type": "PullRequest",
+        "url": "https://api.github.com/repos/youth-inc/youthinc/pulls/5002"
+      },
+      "repository": {
+        "owner": {
+          "login": "youth-inc"
+        }
+      }
+    },
+    {
+      "reason": "mention",
+      "updated_at": "2026-11-11T00:00:00Z",
+      "subject": {
+        "type": "PullRequest",
+        "url": "https://api.github.com/repos/youth-inc/youthinc/pulls/5003"
+      },
+      "repository": {
+        "owner": {
+          "login": "youth-inc"
+        }
+      }
+    },
+    {
+      "reason": "mention",
+      "updated_at": "2026-11-11T00:00:00Z",
+      "subject": {
+        "type": "PullRequest",
+        "url": "https://api.github.com/repos/youth-inc/youthinc/pulls/5004"
+      },
+      "repository": {
+        "owner": {
+          "login": "youth-inc"
+        }
+      }
+    },
+    {
+      "reason": "mention",
+      "updated_at": "2026-11-11T00:00:00Z",
+      "subject": {
+        "type": "PullRequest",
+        "url": "https://api.github.com/repos/youth-inc/youthinc/pulls/5005"
+      },
+      "repository": {
+        "owner": {
+          "login": "youth-inc"
+        }
+      }
+    },
+    {
+      "reason": "mention",
+      "updated_at": "2026-11-11T00:00:00Z",
+      "subject": {
+        "type": "PullRequest",
+        "url": "https://api.github.com/repos/youth-inc/youthinc/pulls/5006"
+      },
+      "repository": {
+        "owner": {
+          "login": "youth-inc"
+        }
+      }
+    },
+    {
+      "reason": "mention",
+      "updated_at": "2026-11-11T00:00:00Z",
+      "subject": {
+        "type": "PullRequest",
+        "url": "https://api.github.com/repos/youth-inc/youthinc/pulls/5007"
+      },
+      "repository": {
+        "owner": {
+          "login": "youth-inc"
+        }
+      }
+    }
+  ],
+  "repos/youth-inc/youthinc/pulls/5008": "<html>Bad gateway</html>",
+  "repos/youth-inc/youthinc/pulls/5002": {
+    "number": 5002,
+    "state": "open",
+    "merged_at": null,
+    "user": {
+      "login": "hank"
+    },
+    "title": "Mention of a team missing from teams_json",
+    "body": "",
+    "created_at": "2026-11-10T07:00:00Z",
+    "updated_at": "2026-11-10T10:00:00Z"
+  },
+  "repos/youth-inc/youthinc/issues/5002/comments": [
+    {
+      "user": {
+        "login": "kinano"
+      },
+      "created_at": "2026-11-10T08:00:00Z",
+      "body": "Drive-by note."
+    },
+    {
+      "user": {
+        "login": "hank"
+      },
+      "created_at": "2026-11-10T10:00:00Z",
+      "body": "@youth-inc/parent please review"
+    }
+  ],
+  "repos/youth-inc/youthinc/pulls/5003": {
+    "number": 5003,
+    "state": "open",
+    "merged_at": null,
+    "user": {
+      "login": "ivy"
+    },
+    "title": "Mention edited into an old comment",
+    "body": "",
+    "created_at": "2026-11-10T07:00:00Z",
+    "updated_at": "2026-11-10T12:00:00Z"
+  },
+  "repos/youth-inc/youthinc/issues/5003/comments": [
+    {
+      "user": {
+        "login": "ivy"
+      },
+      "created_at": "2026-11-10T08:00:00Z",
+      "body": "@kinano edited in: can you check the cache key?",
+      "updated_at": "2026-11-10T12:00:00Z"
+    },
+    {
+      "user": {
+        "login": "kinano"
+      },
+      "created_at": "2026-11-10T10:00:00Z",
+      "body": "Unrelated note."
+    }
+  ],
+  "repos/youth-inc/youthinc/pulls/5004": {
+    "number": 5004,
+    "state": "open",
+    "merged_at": null,
+    "user": {
+      "login": "jack"
+    },
+    "title": "Answered, then an email address",
+    "body": "",
+    "created_at": "2026-11-10T07:00:00Z",
+    "updated_at": "2026-11-10T10:00:00Z"
+  },
+  "repos/youth-inc/youthinc/issues/5004/comments": [
+    {
+      "user": {
+        "login": "jack"
+      },
+      "created_at": "2026-11-10T08:00:00Z",
+      "body": "@kinano can you review?"
+    },
+    {
+      "user": {
+        "login": "kinano"
+      },
+      "created_at": "2026-11-10T09:00:00Z",
+      "body": "Done."
+    },
+    {
+      "user": {
+        "login": "jack"
+      },
+      "created_at": "2026-11-10T10:00:00Z",
+      "body": "mail ops@kinano.dev for access"
+    }
+  ],
+  "repos/youth-inc/youthinc/pulls/5005": {
+    "number": 5005,
+    "state": "open",
+    "merged_at": null,
+    "user": {
+      "login": "jack"
+    },
+    "title": "Answered, then a handle in code",
+    "body": "",
+    "created_at": "2026-11-10T07:00:00Z",
+    "updated_at": "2026-11-10T10:00:00Z"
+  },
+  "repos/youth-inc/youthinc/issues/5005/comments": [
+    {
+      "user": {
+        "login": "jack"
+      },
+      "created_at": "2026-11-10T08:00:00Z",
+      "body": "@kinano ping"
+    },
+    {
+      "user": {
+        "login": "kinano"
+      },
+      "created_at": "2026-11-10T09:00:00Z",
+      "body": "Answered."
+    },
+    {
+      "user": {
+        "login": "jack"
+      },
+      "created_at": "2026-11-10T10:00:00Z",
+      "body": "Run `gh pr list --author @kinano` then:\n```\n@kinano\n```"
+    }
+  ],
+  "repos/youth-inc/youthinc/pulls/5006": {
+    "number": 5006,
+    "state": "open",
+    "merged_at": null,
+    "user": {
+      "login": "lee"
+    },
+    "title": "Answered, but review comments fail to load",
+    "body": "",
+    "created_at": "2026-11-10T07:00:00Z",
+    "updated_at": "2026-11-10T09:00:00Z"
+  },
+  "repos/youth-inc/youthinc/issues/5006/comments": [
+    {
+      "user": {
+        "login": "lee"
+      },
+      "created_at": "2026-11-10T08:00:00Z",
+      "body": "@kinano thoughts?"
+    },
+    {
+      "user": {
+        "login": "kinano"
+      },
+      "created_at": "2026-11-10T09:00:00Z",
+      "body": "Replied."
+    }
+  ],
+  "repos/youth-inc/youthinc/pulls/5007": {
+    "number": 5007,
+    "state": "open",
+    "merged_at": null,
+    "user": {
+      "login": "mike"
+    },
+    "title": "Answer on the second page of comments",
+    "body": "",
+    "created_at": "2026-11-10T07:00:00Z",
+    "updated_at": "2026-11-10T09:00:00Z"
+  },
+  "repos/youth-inc/youthinc/issues/5007/comments": {
+    "_pages": [
+      [
+        {
+          "user": {
+            "login": "mike"
+          },
+          "created_at": "2026-11-10T08:00:00Z",
+          "body": "@kinano look?"
+        }
+      ],
+      [
+        {
+          "user": {
+            "login": "kinano"
+          },
+          "created_at": "2026-11-10T09:00:00Z",
+          "body": "Looked."
+        }
+      ]
+    ]
+  },
+  "graphql:youth-inc/youthinc#3851": {
+    "data": {
+      "repository": {
+        "pullRequest": {
+          "reviewThreads": {
+            "nodes": [
+              {
+                "id": "T_3851",
+                "isResolved": false,
+                "isOutdated": false,
+                "comments": {
+                  "nodes": [
+                    {
+                      "databaseId": 11,
+                      "author": {
+                        "login": "kinano"
+                      },
+                      "createdAt": "2026-11-10T13:00:00Z",
+                      "body": "Self note.",
+                      "path": "a.rb",
+                      "line": 1
+                    },
+                    {
+                      "databaseId": 12,
+                      "author": {
+                        "login": "alice"
+                      },
+                      "createdAt": "2026-11-10T14:00:00Z",
+                      "body": "Reply.",
+                      "path": "a.rb",
+                      "line": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
 }
