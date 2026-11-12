@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+# Fake `gh` for tests/test-pr-action-board-scripts.sh.
+#
+# Serves canned responses from api.json (same directory), keyed by:
+#   "search:<qualifier>:<value>"       gh search prs   (e.g. "search:mentions:kinano")
+#   "<endpoint>"                       gh api <endpoint>  (e.g. "repos/o/r/pulls/1")
+#   "graphql:<owner>/<repo>#<number>"  gh api graphql -f owner= -f repo= -F number=
+#
+# Mimics the real gh / GitHub behaviors the scripts depend on:
+#   - A search term containing a space is sent quoted -> GitHub rejects the query.
+#   - A "-qualifier" passed before "--" is parsed as an unknown flag.
+#   - "-author:<login>" excludes that author; "--owner" scopes to an org (case-insensitive).
+#   - Unknown endpoints (e.g. "repos///issues/1/comments") return HTTP 404.
+#   - PR activity endpoints with no fixture entry return [].
+#   - A fixture value {"_pages": [[...], [...]]} is printed as one array per page,
+#     like `gh api --paginate`.
+#
+# Env:
+#   GH_STUB_FAIL_SEARCH=1         make every `gh search` call fail with HTTP 503
+#   GH_STUB_FAIL_ENDPOINT=<path>  make `gh api <path>` fail with HTTP 500
+#   GH_STUB_LOG=<file>     append each invocation's argv to <file>
+set -uo pipefail
+
+FIXTURES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/api.json"
+
+[[ -n "${GH_STUB_LOG:-}" ]] && printf '%s\n' "$*" >> "$GH_STUB_LOG"
+
+fixture_has() { jq -e --arg k "$1" 'has($k)' "$FIXTURES" >/dev/null; }
+fixture_get() { jq -c --arg k "$1" '.[$k]' "$FIXTURES"; }
+
+cmd_search_prs() {
+  local owner="" positional=() after_dashdash=0
+  while [[ $# -gt 0 ]]; do
+    if (( after_dashdash )); then positional+=("$1"); shift; continue; fi
+    case "$1" in
+      --) after_dashdash=1; shift ;;
+      --owner) owner="$2"; shift 2 ;;
+      --state|--json|--limit|-L|--repo|-R|--jq|-q|--template|-t|--sort|--order) shift 2 ;;
+      -*) echo "unknown shorthand flag: '${1:1:1}' in $1" >&2; exit 1 ;;
+      *) positional+=("$1"); shift ;;
+    esac
+  done
+
+  local term quoted=()
+  for term in "${positional[@]+"${positional[@]}"}"; do
+    if [[ "$term" == *" "* ]]; then
+      local q="${term%%:*}:\\\"${term#*:}\\\""
+      quoted+=("$q")
+    else
+      quoted+=("$term")
+    fi
+  done
+  for term in "${positional[@]+"${positional[@]}"}"; do
+    if [[ "$term" == *" "* ]]; then
+      echo "Invalid search query \"${quoted[*]} state:open type:pr${owner:+ user:$owner}\"." >&2
+      echo "The listed users cannot be searched either because the users do not exist or you do not have permission to view the users." >&2
+      exit 1
+    fi
+  done
+
+  if [[ "${GH_STUB_FAIL_SEARCH:-}" == "1" ]]; then
+    echo "HTTP 503: search is temporarily unavailable (https://api.github.com/search/issues)" >&2
+    exit 1
+  fi
+
+  local key="" exclude_author=""
+  for term in "${positional[@]+"${positional[@]}"}"; do
+    case "$term" in
+      mentions:*|team:*|commenter:*) key="search:${term}" ;;
+      -author:*) exclude_author="${term#-author:}" ;;
+    esac
+  done
+
+  local result="[]"
+  [[ -n "$key" ]] && fixture_has "$key" && result=$(fixture_get "$key")
+  echo "$result" | jq -c --arg ex "$exclude_author" --arg owner "$owner" '
+    map(select($ex == "" or .author.login != $ex))
+    | map(select($owner == "" or (.repository.nameWithOwner | ascii_downcase | startswith(($owner | ascii_downcase) + "/"))))'
+}
+
+cmd_api() {
+  local endpoint="" jq_expr="" f_owner="" f_repo="" f_number=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --paginate|--silent|-i|--include|--verbose) shift ;;
+      --jq|-q) jq_expr="$2"; shift 2 ;;
+      -f|-F|--field|--raw-field)
+        case "$2" in
+          owner=*) f_owner="${2#owner=}" ;;
+          repo=*) f_repo="${2#repo=}" ;;
+          number=*) f_number="${2#number=}" ;;
+        esac
+        shift 2 ;;
+      -H|--header|-X|--method|--input|--cache|-p|--preview|--hostname) shift 2 ;;
+      -*) echo "unknown flag: $1" >&2; exit 1 ;;
+      *) [[ -z "$endpoint" ]] && endpoint="${1#/}"; shift ;;
+    esac
+  done
+
+  if [[ -n "${GH_STUB_FAIL_ENDPOINT:-}" && "$endpoint" == "$GH_STUB_FAIL_ENDPOINT" ]]; then
+    echo "gh: Server Error (HTTP 500): $endpoint" >&2
+    exit 1
+  fi
+
+  local body
+  if [[ "$endpoint" == "graphql" ]]; then
+    local key="graphql:${f_owner}/${f_repo}#${f_number}"
+    if fixture_has "$key"; then
+      body=$(fixture_get "$key")
+    else
+      body='{"data":{"repository":{"pullRequest":{"reviewThreads":{"nodes":[]}}}}}'
+    fi
+  elif fixture_has "$endpoint"; then
+    body=$(fixture_get "$endpoint")
+  elif [[ "$endpoint" =~ ^repos/[^/]+/[^/]+/(issues|pulls)/[0-9]+/(comments|reviews)(\?.*)?$ ]]; then
+    body="[]"
+  else
+    echo "gh: Not Found (HTTP 404)" >&2
+    echo '{"message":"Not Found","documentation_url":"https://docs.github.com/rest","status":"404"}'
+    exit 1
+  fi
+
+  if echo "$body" | jq -e 'type == "object" and has("_pages")' >/dev/null; then
+    echo "$body" | jq -c '._pages[]'
+    return
+  fi
+
+  if [[ -n "$jq_expr" ]]; then
+    echo "$body" | jq -r "$jq_expr"
+  else
+    echo "$body"
+  fi
+}
+
+case "${1:-}" in
+  search)
+    [[ "${2:-}" == "prs" ]] || { echo "fake gh: unsupported: $*" >&2; exit 1; }
+    shift 2; cmd_search_prs "$@" ;;
+  api)
+    shift; cmd_api "$@" ;;
+  *)
+    echo "fake gh: unsupported command: $*" >&2; exit 1 ;;
+esac
