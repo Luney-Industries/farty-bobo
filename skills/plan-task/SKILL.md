@@ -67,7 +67,7 @@ Create the directory if it does not exist (`(umask 077; mkdir -p "$TEMP_DIR/plan
 
 1. **Linear document (default).** For a Linear-issue task, the document's parent is the issue. For a Jira or freeform task, the parent is a Linear team or project the human names. Use the **same Linear MCP connector that fetched the issue in Step 2**. If more than one Linear connector is configured and no issue was fetched, ask the human which one to use. Record the connector in the state file.
 2. **Claude Artifact (fallback).** Private to the human. Use it when the human picks it, or when Linear fails at the first checkpoint (see Failure handling).
-3. **Skip.** No backup this session: no writes, no marker comment, no further backup prompts. `/critique` then omits the PR plan line.
+3. **Skip.** No backup this session: no writes, no marker comment, no further backup prompts. `/critique` then omits the PR `More info:` plan line.
 
 **Consent is required before the first Linear write. No exceptions, and this includes Linear-issue tasks.** A Linear document can be read, and edited, by everyone who can see its parent. Ask once:
 

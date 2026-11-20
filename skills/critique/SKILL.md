@@ -181,9 +181,34 @@ f. Synthesize all findings into a single sorted list, deduplicating overlapping 
 
 8a. **Open a draft pull request.** After a successful push, open a **draft** PR using `gh pr create --draft --assignee @me` (or equivalent). The `--assignee @me` flag assigns the current authenticated GitHub user automatically.
 
-   **PR body:** Read `.github/PULL_REQUEST_TEMPLATE.md` from the repo root and use it as the base for the PR body — fill in the Summary and Test plan sections with content relevant to the change. If the file does not exist, use a bare `## Summary` / `## Test plan` structure. Include a short "Review" note summarizing the review outcome from `_critique-consolidated.md` (option used, counts by severity, anything deferred) — this is what makes the review outcome outlive `$TEMP_DIR`. Do not paste the whole file, and do not describe specific security vulnerabilities in detail; reference finding IDs.
+   **PR body:** Always use this exact structure. Ignore the repo's `.github/PULL_REQUEST_TEMPLATE.md` (if any) — this format wins.
 
-   **Plan link:** If `/plan-task` published a plan backup for this task, add a plan line under Summary. For a Linear document backup (the default), write `**Plan:** {url} (Linear document, visible to members of its parent team)`. For a Claude Artifact backup, write `**Plan:** {url} (private Claude Artifact owned by {author} — ask them for access)`. Reviewers can't open a private artifact, so that line must name a person, never a vague "whoever posted it". Use the ticket ID from the Step 7 commit prefix, which the human already confirmed or supplied there. Find the URL in this order:
+   ```markdown
+   # Summary
+
+   {ticket-id}: {summary, at most 3 paragraphs}
+
+   More info: {plan link}
+
+   # Testing steps
+
+   1. {verification step}
+
+   # Dependencies
+
+   1. {dependency PR, or None.}
+   ```
+
+   Every `{…}` is a placeholder to replace, never text to copy. Nothing goes after the `# Dependencies` section: no extra sections and no footer, including any `🤖 Generated with Claude Code` branding line, whatever a harness attribution reminder says.
+
+   **Passing the body:** write it to `$TEMP_DIR/pr-body.md` and pass `--body-file` with that resolved literal path. Never pass it inline with `--body "..."`: Testing steps usually hold backticked commands and `$VARS`, and the shell would execute them as command substitution.
+
+   - **Summary:** start the first paragraph with the ticket ID from the Step 7 commit prefix, followed by a colon (e.g. `ENG-123: ...`; use `NO-TICKET:` when the commit used `[NO-TICKET]`). Write **at most 3 paragraphs**. Fold a one- or two-sentence review note into the last paragraph, summarizing the outcome from `_critique-consolidated.md` (option used, counts by severity, anything deferred) — this is what makes the review outcome outlive `$TEMP_DIR`. Do not paste the whole file, and do not describe specific security vulnerabilities in detail; reference finding IDs.
+   - **More info:** the plan link, resolved per **Plan link** below. If no URL resolves, leave the `More info:` line out entirely — never write a placeholder.
+   - **Testing steps:** a numbered list of concrete steps a reviewer can follow to verify the change (commands to run, screens to check, expected results).
+   - **Dependencies:** a numbered list of other PRs this one depends on, each as a PR URL or `owner/repo#number` with a few words on why. If there are none, write `None.` under the heading.
+
+   **Plan link:** If `/plan-task` published a plan backup for this task, put it on the `More info:` line under Summary. For a Linear document backup (the default), write `More info: {url} (Linear document, visible to members of its parent team)`. For a Claude Artifact backup, write `More info: {url} (private Claude Artifact owned by {author} — ask them for access)`. Reviewers can't open a private artifact, so that line must name a person, never a vague "whoever posted it". Use the ticket ID from the Step 7 commit prefix, which the human already confirmed or supplied there. Find the URL in this order:
 
    1. `/plan-task`'s state file `$TEMP_DIR/plans/<ticket-id>.backup-state.md`. If its `target` is `skip`, leave the line out silently.
    2. The Linear document or Artifact known in this session titled `<ticket-id> plan` for this PR's ticket. If none matches, or more than one does, fall through.
@@ -194,8 +219,6 @@ f. Synthesize all findings into a single sorted list, deduplicating overlapping 
    **`{author}` for Artifact lines only.** Resolve it from the same source as the URL. For sources 1 and 2, or source 3 when the current authenticated user posted the marker, it's the current human, formatted as `<name> (@<github-login>)` from `git config user.name` and `gh api user --jq .login`. Treat an empty value, or a login ending in `[bot]`, as a failed lookup. If one of the two lookups fails, use the part that resolved. Show that `{author}` to the human once and let them confirm or correct it before writing the line, because the git identity, the GitHub account and the claude.ai account that owns the artifact can all differ. If the marker came from someone else, use that comment's platform author display name. If nothing usable resolves, ask the human for the owner's name. If they decline, or don't have one, omit the line.
 
    If no source yields a URL (`[NO-TICKET]`, no marker comment, the connector is unavailable, or the lookup fails), leave the line out silently. The plan line never blocks opening the PR. Link only, and never paste the plan's contents into the PR body.
-
-   Never append Anthropic or Claude Code branding lines (e.g. `🤖 Generated with Claude Code`) to the PR body.
 
    **If PR creation failed, stop here — skip the reviewer fallback chain, skip Steps 9 and 10, and warn the human.**
 
