@@ -1,13 +1,13 @@
-## Summary
+# Summary
 
-{ticket-id} <!-- or [NO-TICKET] if there is no associated ticket -->
+{ticket-id}: {summary, at most 3 paragraphs}
 
-<!--
-- What changed and why (1-3 bullets)
--->
+More info: {plan link}
 
-## Test plan
+# Testing steps
 
-<!--
-- [ ] What to verify
--->
+1. {verification step}
+
+# Dependencies
+
+1. {dependency PR, or None.}
