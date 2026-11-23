@@ -34,27 +34,22 @@ branch=$(git branch --show-current 2>/dev/null)
 
 If either check fails, stop. Tell the human the expected values (PR repo and `headRefName`) and what was found (`origin` and branch, or "not a git repo"). Do nothing else: don't merge, don't transition the ticket, don't check out or switch branches.
 
-**Approval check (argument mode only).** Refuse to merge unless:
+**Approval check (argument mode only).** The PR's `reviewDecision` must be `APPROVED`. Commits pushed after the approval do **not** block the merge. Never stop because the head commit differs from the approved commit. Step 3 shows those commits to the human as information.
 
-- `reviewDecision` is `APPROVED`.
+If `reviewDecision` isn't `APPROVED`, stop. Don't merge or transition the ticket. Tell the human the PR URL and the `reviewDecision` value, and explain why it stopped:
 
-```sh
-gh pr view "$PR" --json headRefOid,latestReviews --jq '
-  .headRefOid as $head
-  | ([.latestReviews[] | select(.state == "APPROVED")] | sort_by(.submittedAt) | last | .commit.oid) as $approved
-  | {head: $head, approved_at: $approved, current: ($approved == $head)}'
-```
+- **`latestReviews` has an `APPROVED` review, but on an older commit:** the repo's branch protection most likely dismissed that approval when new commits were pushed. That re-review rule belongs to the repo, not this skill. The human can get a fresh approval, or change the repo setting.
+- **`reviewDecision` is empty or null:** the repo most likely has no required-review rule, so GitHub reports no decision even when someone approved. The human can merge manually, or run `/ship-task` with no argument from this branch.
+- **Anything else** (`REVIEW_REQUIRED`, `CHANGES_REQUESTED`): say so plainly. The PR needs an approval, or the requested changes resolved.
 
-If `reviewDecision` isn't `APPROVED`, or `current` is false (commits were pushed after the latest approval, or there is no approval), stop. Tell the human that re-review is needed, and include the PR URL, `reviewDecision`, the approved commit and the head commit. Do not merge or transition the ticket. The human can request re-review and run `/ship-task` again.
-
-When every check passes, continue with Step 1, using the data you just fetched in place of the bare `gh pr view` command.
+If the worktree and approval checks pass, continue with Step 1, using the data you just fetched in place of the bare `gh pr view` command.
 
 ---
 
 ## Step 1 — Discover the PR
 
 ```sh
-gh pr view --json number,title,url,state,isDraft,baseRefName,headRefName,mergeable,mergeStateStatus,statusCheckRollup
+gh pr view --json number,title,url,state,isDraft,baseRefName,headRefName,headRefOid,mergeable,mergeStateStatus,statusCheckRollup,latestReviews
 ```
 
 (With an argument, this data comes from the Step 0 fetch of that PR instead.)
@@ -97,7 +92,15 @@ Record the resolved `TRACKER` (Linear | Jira | none) and `TICKET_ID` — carry t
 
 ## Step 3 — Confirm with the human
 
-Before doing **anything** irreversible, present a clear confirmation summary. Use the values gathered in Steps 1–2:
+Before doing **anything** irreversible, present a clear confirmation summary. Use the values gathered in Steps 1–2.
+
+**Commits since approval (information only).** Take the commit of the most recent `APPROVED` entry in `latestReviews`. If it differs from `headRefOid`, count the commits between them:
+
+```sh
+gh api "repos/<owner>/<repo>/compare/<approved-oid>...<headRefOid>" --jq '.total_commits'
+```
+
+Show the count on the `Since approval` line below. If there is no approving review, show `no approving review`. If the head is the approved commit, show `none`. This line is never a reason to stop or ask for re-review. It just tells the human what they are saying YES to.
 
 ```
 Here's what I'm about to do — confirm or reject each item:
@@ -105,6 +108,7 @@ Here's what I'm about to do — confirm or reject each item:
   [1] Merge PR #<number> "<title>"
         Branch:    <headRefName> → <baseRefName>
         URL:       <url>
+        Since approval: <N> commits (<approved short sha>..<head short sha>) | none | no approving review
         Method:    regular merge  (preferred; will re-confirm if repo requires a different method)
         After merge: delete branch <headRefName>
 
@@ -126,12 +130,6 @@ Use `gh` to merge with a regular merge commit as the default:
 
 ```sh
 gh pr merge <number> --merge --delete-branch
-```
-
-With an argument, merge that exact PR and pin it to the head commit that was approved in Step 0. That way a push made after the check makes the merge fail instead of slipping through:
-
-```sh
-gh pr merge "$PR" --merge --delete-branch --match-head-commit <headRefOid>
 ```
 
 If `--merge` is rejected by the repo (regular merges disabled), **stop and re-confirm with the human** before retrying with `--squash` or `--rebase`. Do not silently fall through to a different merge strategy — the human approved a regular merge specifically.
