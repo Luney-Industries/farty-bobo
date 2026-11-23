@@ -232,3 +232,6 @@ skills/gstack-*/
 
 # anthropic-skills plugin's local sync cache (bundles pulled from the marketplace) — not repo source
 /skills/synced/
+
+# Git worktrees created by /build, /plan-task and EnterWorktree
+/.claude/worktrees/

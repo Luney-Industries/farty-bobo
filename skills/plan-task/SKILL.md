@@ -168,42 +168,94 @@ Plan file naming: `$TEMP_DIR/plans/<jira-id>.plan.md` (e.g. `$TEMP_DIR/plans/PRO
 
 ### 2b. Determine Working Branch Strategy
 
-**This step is mandatory and blocking. Do not proceed to Step 3 until a branch strategy is confirmed by the human. No exceptions.**
+**This step is mandatory and blocking. Do not proceed to Step 3 until a worktree is confirmed by the human, or reused per **a** below.**
 
-**Resolve the default branch once**, store it as `DEFAULT_BRANCH`:
-```
-DEFAULT_BRANCH=$(git remote show origin 2>/dev/null | grep 'HEAD branch' | awk '{print $NF}')
-# fallback if no remote:
-DEFAULT_BRANCH=${DEFAULT_BRANCH:-$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')}
+Resolve the default branch and where the session is. Run this block as-is:
+
+```sh
+# >>> default-branch (canonical: skills/build/SKILL.md; tests/test-worktree-setup.sh enforces sync)
+DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')
+DEFAULT_BRANCH=${DEFAULT_BRANCH:-$(git remote show origin 2>/dev/null | awk '/HEAD branch/ {print $NF}')}
 DEFAULT_BRANCH=${DEFAULT_BRANCH:-main}
+MAIN_CHECKOUT=$(git worktree list --porcelain | sed -n '1s/^worktree //p')
+echo "DEFAULT_BRANCH=$DEFAULT_BRANCH MAIN_CHECKOUT=$MAIN_CHECKOUT CURRENT=$(git rev-parse --show-toplevel) BRANCH=$(git branch --show-current)"
+git worktree list
+# <<< default-branch
 ```
 
-**Detect current context** (for informational display only — do NOT auto-proceed based on this):
+**The main checkout never leaves `DEFAULT_BRANCH`.** The main checkout is the first entry in `git worktree list` (`MAIN_CHECKOUT`). Never run `git checkout` or `git switch` to another branch there. All feature work happens in a linked worktree under `MAIN_CHECKOUT/.claude/worktrees/`. If the main checkout is already on some other branch, stop and tell the human. Do not plan on it, and do not switch it back yourself, because it may hold their uncommitted work.
 
-1. Run `git rev-parse --git-dir` and compare to `git rev-parse --git-common-dir`. Note if already inside a worktree.
-2. Note the current branch and whether it equals `DEFAULT_BRANCH`.
+**a. Reuse a setup from earlier in this conversation, if there is one.** Look for the **most recent** turn in this conversation where the human named the branch or worktree to use for **this ticket**, or where an earlier `/plan-task` or `/build` for this ticket created one. A setup made for a different task does not count. If two sources disagree, ask the human.
 
-Assemble the context line using these two facts independently (both can be true simultaneously):
-`Current branch: <name> [on default branch] | [inside worktree]`
+Validate the candidate before reusing it. All of these must hold:
 
-**Always present the following prompt to the human** — every time, regardless of current branch or worktree state. If running non-interactively (no human at keyboard), default to Option 1 automatically and log it.
+- The branch is not `DEFAULT_BRANCH`.
+- The branch has a linked worktree in `git worktree list` (not the main checkout). If the branch exists but has no worktree, create one for it with the worktree-setup block below and `EXISTING_BRANCH='yes'`.
+- The branch is not already shipped: `git for-each-ref --format='%(upstream:track)' refs/heads/<branch>` is not `[gone]`, and, when `gh` is available, `gh pr list --head <branch> --state all --json state --jq '.[].state'` shows no `MERGED` or `CLOSED` without an `OPEN` one.
+
+If every check passes, enter the worktree (`EnterWorktree` with `path`, or `cd`), print `Reusing worktree from earlier: <path> on <branch> (source: <human | /plan-task | /build>)`, and skip to recomputing `TEMP_DIR` below. If there is no qualifying source, or a check fails (say which), go to **b**. Being inside some worktree is not, by itself, a setup to reuse.
+
+**b. Otherwise ask.** Present this prompt. If running non-interactively (no human at keyboard), pick Option 1 and log it.
 
 ```
-Current branch: <name> [on default branch] | [inside worktree]
+Current location: <main checkout | worktree at <path>> on <branch>
 
 How do you want to work on this?
-1. Worktree — new git worktree from <DEFAULT_BRANCH> at ../<repo-name>-<branch-name>. Keeps your working tree clean.
-2. New branch here — create and check out a new branch from <DEFAULT_BRANCH> in this directory (root repo).
-3. Reuse current branch/worktree — continue working on <current-branch> as-is.
+1. New worktree — branch <proposed-branch> from origin/<DEFAULT_BRANCH> at .claude/worktrees/<branch-slug>.
+2. Switch into an existing worktree:
+   a. <path> (<branch>)   ← current, if the session is already in one
+   b. <path> (<branch>)
 ```
 
 **Wait for the human to reply before doing anything else.**
 
-- **Option 1 (Worktree):** Use `EnterWorktree` (preferred — it switches the agent's working context into the new worktree). If `EnterWorktree` is unavailable, run `git worktree add ../<repo-name>-<branch-name> $DEFAULT_BRANCH` and then `cd` into the new worktree directory before doing any file operations. Worktree path convention: `../<repo-name>-<branch-name>` (sibling directory, dash-separated — same convention as `/build`). Recompute `TEMP_DIR` using the new branch name after creation.
-- **Option 2 (New branch here):** Run `git checkout -b <branch-name> $DEFAULT_BRANCH`.
-- **Option 3 (Reuse):** Confirm the current branch name and continue. If the current branch IS `DEFAULT_BRANCH`, refuse option 3 — never work directly on the default branch.
+List under Option 2 every linked worktree from `git worktree list` except the main checkout and any on `DEFAULT_BRANCH`. If there are none, drop Option 2 and just confirm the branch name for Option 1.
 
-Record the chosen strategy (worktree path or branch name) in the decisions scratch file (Step 9).
+- **Option 1 (New worktree):** Fill in `BRANCH_NAME` and run the worktree-setup block below as **one** Bash call — shell variables do not survive between calls. Then enter the printed `WORKTREE_PATH` with `EnterWorktree` (`path`), or `cd` into it, before any file operation. Do not create worktrees with `EnterWorktree` `name`: it picks its own folder, branch name and base. If the block reports a taken path or branch name, ask the human for another name. Never reuse the directory.
+- **Option 2 (Existing worktree):** Run the validation checks from **a** on the chosen worktree, then enter it with `EnterWorktree` (`path`), or `cd`.
+
+**Worktree setup block** (same as `/build`). It finds the main checkout from anywhere, makes git ignore `.claude/worktrees/` via the shared `info/exclude`, refuses taken paths and names before creating anything, and cuts new branches from freshly fetched `origin/<DEFAULT_BRANCH>` with no upstream. Branch slashes become dashes in the folder name: `kinano/foo` lives at `.claude/worktrees/kinano-foo`.
+
+```sh
+# >>> worktree-setup (canonical: skills/build/SKILL.md; tests/test-worktree-setup.sh enforces sync)
+BRANCH_NAME='<branch-name>'
+EXISTING_BRANCH='no'
+fail() { echo "ERROR: $*" >&2; exit 1; }
+case "$BRANCH_NAME" in ''|'<branch-name>') fail "fill in BRANCH_NAME" ;; esac
+DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')
+DEFAULT_BRANCH=${DEFAULT_BRANCH:-$(git remote show origin 2>/dev/null | awk '/HEAD branch/ {print $NF}')}
+DEFAULT_BRANCH=${DEFAULT_BRANCH:-main}
+[ "$BRANCH_NAME" != "$DEFAULT_BRANCH" ] || fail "refusing to create a worktree for $DEFAULT_BRANCH"
+REPO_ROOT=$(git worktree list --porcelain | sed -n '1s/^worktree //p')
+[ "$(git -C "$REPO_ROOT" rev-parse --is-inside-work-tree 2>/dev/null)" = true ] || fail "main working tree not found (bare repo?)"
+COMMON_DIR=$(cd "$(git rev-parse --git-common-dir)" && pwd) || fail "git common dir not found"
+git -C "$REPO_ROOT" check-ignore -q .claude/worktrees/probe
+case $? in
+  0) ;;
+  1) mkdir -p "$COMMON_DIR/info"
+     if [ -s "$COMMON_DIR/info/exclude" ] && [ -n "$(tail -c1 "$COMMON_DIR/info/exclude")" ]; then echo >> "$COMMON_DIR/info/exclude"; fi
+     echo '/.claude/worktrees/' >> "$COMMON_DIR/info/exclude" ;;
+  *) fail "git check-ignore failed" ;;
+esac
+WORKTREE_PATH="$REPO_ROOT/.claude/worktrees/$(printf '%s' "$BRANCH_NAME" | tr '/' '-')"
+[ ! -e "$WORKTREE_PATH" ] || fail "$WORKTREE_PATH already exists; pick another branch name"
+if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
+  [ "$EXISTING_BRANCH" = yes ] || fail "branch $BRANCH_NAME already exists; pick another name"
+  git worktree add "$WORKTREE_PATH" "$BRANCH_NAME" || fail "git worktree add failed"
+else
+  [ "$EXISTING_BRANCH" = no ] || fail "branch $BRANCH_NAME does not exist"
+  git fetch --quiet origin "$DEFAULT_BRANCH" 2>/dev/null || echo "WARNING: could not fetch origin/$DEFAULT_BRANCH; branching from the last fetched copy" >&2
+  BASE="origin/$DEFAULT_BRANCH"
+  git rev-parse --verify --quiet "$BASE" >/dev/null || BASE="$DEFAULT_BRANCH"
+  git worktree add --no-track -b "$BRANCH_NAME" "$WORKTREE_PATH" "$BASE" || fail "git worktree add failed"
+fi
+echo "WORKTREE_PATH=$WORKTREE_PATH"
+# <<< worktree-setup
+```
+
+**Recompute `TEMP_DIR` after entering the worktree, whichever way you got there** — it is keyed on the branch name, and plans written under the old branch's folder are invisible to `/build` and `/critique`.
+
+Record the worktree path and branch in the decisions scratch file (Step 9), and pass both to `/build` at handoff, so `/build` can reuse them without asking again.
 
 ### 2c. Move Ticket to In Progress
 
@@ -368,7 +420,7 @@ This file lives in `$TEMP_DIR` — outside the repo — so it can never be accid
 After plan approval (Step 8) and a clean security audit (this is NOT build authorization — the Build Gate below still applies):
 1. Commit only the acceptance test file to the current feature branch. Show the diff to the human before committing. Do not stage the plan file, dotfiles, secrets, or the decisions scratch file (all are in `$TEMP_DIR`, outside the repo).
 2. **STOP. Do not invoke `/build` yet.** Before handing off, you MUST obtain an explicit, unambiguous go-ahead from the human (see "Build Gate" below).
-3. Only once the Build Gate is satisfied: pass a summary of the task details, the plan file path (`$TEMP_DIR/plans/...`), the acceptance test file path, the decisions scratch file path (`$TEMP_DIR/plans/decisions-*.md`), and all generated artifacts to the `/build` skill.
+3. Only once the Build Gate is satisfied: pass a summary of the task details, the plan file path (`$TEMP_DIR/plans/...`), the acceptance test file path, the exact decisions scratch file path (`$TEMP_DIR/plans/decisions-{ticket-id}.md`, resolved — never a glob), the worktree path and branch from Step 2b, and all generated artifacts to the `/build` skill.
 
 ---
 
