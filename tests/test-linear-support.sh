@@ -96,14 +96,14 @@ test_plan_epic_step1_detection_rule() {
   assert_contains "$PLAN_EPIC" "Source system detection rule" || return 1
 }
 
-# T-8: critique Step 8 includes Linear workflow state transition via mcp__linear__save_issue
-test_critique_step8_linear_transition() {
+# T-8: critique Step 9 includes Linear workflow state transition via mcp__linear__save_issue
+test_critique_step9_linear_transition() {
   assert_file_exists "$CRITIQUE" || return 1
   assert_contains "$CRITIQUE" "mcp__linear__save_issue" || return 1
 }
 
-# T-9: critique Step 9 includes Linear comment posting via mcp__linear__save_comment
-test_critique_step9_linear_comment() {
+# T-9: critique Step 10 includes Linear comment posting via mcp__linear__save_comment
+test_critique_step10_linear_comment() {
   assert_file_exists "$CRITIQUE" || return 1
   assert_contains "$CRITIQUE" "mcp__linear__save_comment" || return 1
 }
@@ -112,6 +112,36 @@ test_critique_step9_linear_comment() {
 test_create_linear_ticket_skill_exists() {
   assert_file_exists "$CREATE_LINEAR" || return 1
   assert_contains "$CREATE_LINEAR" "mcp__linear__save_issue" || return 1
+}
+
+# T-11: critique ticket updates are on by default, with defined opt-out flags
+test_critique_ticket_updates_default_on() {
+  assert_file_exists "$CRITIQUE" || return 1
+  assert_contains "$CRITIQUE" "Ticket updates are ON by default" || return 1
+  assert_contains "$CRITIQUE" "--no-ticket-update" || return 1
+  assert_contains "$CRITIQUE" "--no-transition" || return 1
+  assert_contains "$CRITIQUE" "--no-decision-log" || return 1
+}
+
+# T-12: critique Step 9 targets In Review and never falls back to In Progress
+test_critique_no_in_progress_fallback() {
+  assert_file_exists "$CRITIQUE" || return 1
+  assert_contains "$CRITIQUE" 'Never fall back to "In Progress"' || return 1
+}
+
+# T-13: critique runs Steps 9 and 10 before the reviewer handoff (nested runs rewrite the checklist)
+test_critique_ticket_steps_before_handoff() {
+  assert_file_exists "$CRITIQUE" || return 1
+  assert_contains "$CRITIQUE" "Run Steps 9 and 10 now, before the reviewer handoff" || return 1
+}
+
+# T-14: critique writes a follow-up ticket checklist and creates tickets via pre-approved mode
+test_critique_followup_checklist() {
+  assert_file_exists "$CRITIQUE" || return 1
+  assert_contains "$CRITIQUE" "## Follow-up tickets" || return 1
+  assert_contains "$CRITIQUE" "pre-approved mode" || return 1
+  assert_file_exists "$CREATE_LINEAR" || return 1
+  assert_contains "$CREATE_LINEAR" "## Pre-approved mode" || return 1
 }
 
 # ── Run ──────────────────────────────────────────────────────────
@@ -123,9 +153,13 @@ run_test test_plan_task_step2_linear_api_key
 run_test test_plan_task_step2_linear_plan_naming
 run_test test_plan_epic_step1_linear_source
 run_test test_plan_epic_step1_detection_rule
-run_test test_critique_step8_linear_transition
-run_test test_critique_step9_linear_comment
+run_test test_critique_step9_linear_transition
+run_test test_critique_step10_linear_comment
 run_test test_create_linear_ticket_skill_exists
+run_test test_critique_ticket_updates_default_on
+run_test test_critique_no_in_progress_fallback
+run_test test_critique_ticket_steps_before_handoff
+run_test test_critique_followup_checklist
 
 printf "\n${GREEN}%d passed${RESET}, ${RED}%d failed${RESET}\n" "$PASS" "$FAIL"
 if (( FAIL > 0 )); then

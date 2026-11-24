@@ -411,7 +411,7 @@ _Written by /plan-task on YYYY-MM-DD_
 - Deferred Z to follow-up — reason: <human-stated reason>
 ```
 
-This file lives in `$TEMP_DIR` — outside the repo — so it can never be accidentally staged. It is consumed and deleted by `/critique` in Step 9.
+This file lives in `$TEMP_DIR` — outside the repo — so it can never be accidentally staged. It is consumed and deleted by `/critique` in Step 10.
 
 **Checkpoint:** once the decisions scratch file is written, mirror the plan file per "Plan Backup" above (the decisions file itself is short-lived — `/critique` deletes it — so it is not separately mirrored; the plan file mirror already carries the human-facing summary of the work).
 
