@@ -5,6 +5,21 @@ description: Creates a Jira ticket from context in the current conversation or c
 
 # Create Jira Ticket
 
+## Pre-approved mode (follow-up tickets from `/critique`)
+
+`/critique` Step 10 calls this skill for each follow-up box the human checked in `_critique-consolidated.md`. **The checked box is the human's explicit approval.** In this mode, this section overrides the interactive steps below:
+
+- **Site, project, epic, sprint:** use the parent ticket's. Do not ask.
+- **Issue type:** Task, or the closest valid type for the project. Do not ask. Labels: the parent's. Priority defaults to Medium.
+- **Summary:** `[{parent-id} {finding-id}] {short title}`, for example `[PROJ-123 MEDIUM-3] Loose status match`. `/critique` uses this tag to find duplicates.
+- **Description:** the identity line and template from Step 4, in ADF, filled with the context `/critique` passed in, plus links to the parent ticket and the PR.
+- **Link:** link the new ticket to the parent with a "relates to" link.
+- If a required field can't be filled from the parent, ask the human for that one field only.
+- **Skip Step 5 entirely.** No draft review and no codebase-context confirmation: the human approved filing this context by checking the box.
+- Run Step 6 and report back to `/critique`.
+
+Use pre-approved mode **only** when `/critique` invokes the skill for a checked box. Every other invocation, including a human typing `/create-jira-ticket`, follows the full interactive flow below.
+
 ## 1. Gather context
 
 Collect information about the ticket from whatever is available — in order of priority:
@@ -63,7 +78,7 @@ Format the description as **Atlassian Document Format (ADF)** — not markdown. 
 
 ## 5. Review with human
 
-Present the full draft clearly. Remind the human that this will post codebase context (code snippets, error messages, etc.) to Jira — confirm they're comfortable with that before proceeding. Do not create the ticket until explicitly approved.
+Present the full draft clearly. Remind the human that this will post codebase context (code snippets, error messages, etc.) to Jira — confirm they're comfortable with that before proceeding. Do not create the ticket until explicitly approved. (Skipped in pre-approved mode; see the top of this skill.)
 
 ## 6. Create the ticket
 
