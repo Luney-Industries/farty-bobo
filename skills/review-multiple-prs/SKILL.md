@@ -1,6 +1,6 @@
 ---
 name: review-multiple-prs
-description: Review one or more pull requests by spinning up one review agent per PR, then consolidating findings into a single cross-PR summary. Use this when reviewing 1+ PRs that need to be understood together — stacked, parallel feature work, or a release batch.
+description: Review one or more pull requests by spinning up one review agent per PR, then consolidating findings into a single cross-PR summary. Use this when reviewing 1+ PRs that need to be understood together — stacked, parallel feature work, or a release batch. With no PRs or criteria given, it finds the PRs that need an action from you: new review requests, or new commits/comments after one of your reviews.
 disable-model-invocation: false
 ---
 
@@ -19,15 +19,90 @@ Use this skill when the user provides one or more PR numbers or URLs to review. 
 ## Step 1 — Identify and classify the PRs
 
 - Collect all PR numbers / URLs from the user's message.
-- If no PRs are specified, run the **PR Discovery** flow below before proceeding.
+- If no PRs are specified, run **PR Discovery** below before proceeding:
+  - If the human gave selection criteria, use **Custom-criteria discovery**. Criteria are things that pick *whose* or *which* PRs: teammate names/handles, labels, a date range, a search query.
+  - Otherwise — no PRs and no criteria — use **Default discovery: PRs that need an action from me**. Do **not** ask the human for teammate names in this case; the default criteria are the answer. Requests like "review my queue", "review what's waiting on me", or a bare invocation are **not** criteria — they are the default.
+  - A repo name on its own (e.g. "review PRs in `org/api`") is **not** a switch to custom criteria — it only changes which repo default discovery searches.
 
-### PR Discovery (when no PRs are specified)
+### Default discovery: PRs that need an action from me (when no PRs and no criteria are given)
 
-Use `gh` and the GitHub search API to find open PRs by the user's teammates that are awaiting review. Run these steps:
+A PR qualifies when the ball is in the current user's court. Discovery is scoped to **one repo** — the rest of this skill (agent prompts, per-PR output files, posting in Step 6) assumes every PR lives in the single `{owner}/{repo}` from Step 0. Do not widen it to an org-wide search.
+
+1. **Resolve the repo and the current user once:**
+   - Repo: the `{owner}/{repo}` from Step 0 — or, if the human named a repo, that one (re-run Step 0's access check on it). If Step 0 could not resolve a repo (not inside a git repo, no remote), ask the human which repo to search instead of stopping.
+   - `me=$(gh api user --jq .login)` — reuse this value for every check below; do not re-fetch it.
+   - Tell the human which repo is being searched (e.g. "Searching `{owner}/{repo}` for PRs that need an action from you").
+
+2. **Bucket A — new review requests.** Open, non-draft PRs where a review is requested from the current user (individually or via a team):
+
+```
+gh search prs --repo {owner}/{repo} --state open --draft=false --review-requested=@me --json number,title,url,author,updatedAt --limit 100
+```
+
+   Drop any result whose `author.login == {me}`. A PR the current user already reviewed but was **re-requested** on also lands here — GitHub re-adds the reviewer on re-request, and that is an action item.
+
+3. **Bucket B — activity after one of my reviews.** Open, non-draft PRs the current user has already reviewed:
+
+```
+gh search prs --repo {owner}/{repo} --state open --draft=false --reviewed-by=@me --json number,title,url,author,updatedAt --limit 100
+```
+
+   Drop any result whose `author.login == {me}` (a `COMMENTED` review on your own PR makes it match), and drop any result whose `url` is already in Bucket A — dedup by `url`, not by number. Then for each remaining candidate:
+
+   a. **My latest submitted review — time and commit.** Ignore `PENDING` (it has no `submitted_at`). `--paginate` applies the `--jq` filter per page, so emit one line per review and pick the latest with `sort`:
+
+```
+gh api --paginate repos/{owner}/{repo}/pulls/{number}/reviews --jq '.[] | select(.user != null and .user.login == "{me}" and .state != "PENDING") | "\(.submitted_at)\t\(.commit_id)"' | sort | tail -1
+```
+
+   The two fields are `{my_review_at}` and `{my_review_commit}`. If the output is empty (review not found — e.g. it was deleted), put the PR in **Skipped** with the note "couldn't find your review" and move on; never compare against an empty value.
+
+   b. **New commits since my review** — compare the commit my review was left on against the PR's current head. This catches plain pushes, force-pushes, and rebases, regardless of commit dates:
+
+```
+gh pr view {number} -R {owner}/{repo} --json headRefOid --jq .headRefOid
+```
+
+   If it differs from `{my_review_commit}` → reason `new commits`.
+
+   c. **New comments or reviews since I last spoke.** First compute `{my_last_activity}`: the latest of `{my_review_at}` and the `created_at` of my own issue comments and inline review comments (so a reply I already posted resets the clock). Then find activity newer than that from anyone other than `{me}`, excluding bots (`.user.type == "Bot"`) and deleted accounts (`.user == null`). Check all three sources — each holds different comments:
+
+```
+gh api --paginate repos/{owner}/{repo}/issues/{number}/comments --jq '.[] | select(.user != null) | "\(.created_at)\t\(.user.login)\t\(.user.type)\tcomment"'
+gh api --paginate repos/{owner}/{repo}/pulls/{number}/comments --jq '.[] | select(.user != null) | "\(.created_at)\t\(.user.login)\t\(.user.type)\tinline"'
+gh api --paginate repos/{owner}/{repo}/pulls/{number}/reviews --jq '.[] | select(.user != null and .state != "PENDING") | "\(.submitted_at)\t\(.user.login)\t\(.user.type)\treview:\(.state):\(.body | length)"'
+```
+
+   From these lines: rows where login is `{me}` feed `{my_last_activity}`; rows where type is `Bot` are ignored; every other row newer than `{my_last_activity}` is activity. Ignore another reviewer's `APPROVED` review with an empty body (`review:APPROVED:0`) — someone else approving is not an action item for you. All these timestamps are GitHub API UTC values ending in `Z`, so plain string comparison orders them correctly.
+
+   Record a reason per kind, naming who: `author replied` when the PR author has new activity, `new comments from @x, @y` for other humans, `new review from @x ({state})` for others' non-empty or non-approval reviews.
+
+   d. Keep the PR if b or c produced a reason; record every reason. Otherwise it goes to **Skipped** (nothing new since your last review or reply).
+
+4. **Present the list to the human** grouped by bucket, one line per PR with its reason(s):
+
+   > **New review requests:**
+   > - {owner}/{repo}#{number} — {title} — by @{author} — requested {individually | via team @{team} | individually and via team @{team}}
+   >
+   > **Activity since your last review:**
+   > - {owner}/{repo}#{number} — {title} — by @{author} — your last review {my_review_at}; {reasons, comma-separated}
+   >
+   > **Skipped (nothing new since your last review):**
+   > - {owner}/{repo}#{number} — {title} — last reviewed {my_review_at} {or: couldn't find your review}
+
+   Omit any empty group. To label Bucket A requests, read `reviewRequests` from `gh pr view <number> -R {owner}/{repo} --json reviewRequests`: an entry with `login == {me}` is an individual request, a team entry is a team request, and both can apply. If either search returned exactly 100 results, warn the human that the list may be truncated. If both buckets are empty, say so and stop — do not fall back to asking for teammate names.
+
+   Then ask: "Should I review all of these, or select a subset? I can also include any skipped PRs if you want to re-review them."
+
+5. Once the human confirms the set, continue with the normal Step 1 classification flow using those PRs.
+
+### Custom-criteria discovery (when the human gave criteria)
+
+Use `gh` and the GitHub search API to find open PRs matching the human's criteria. The steps below cover the common case — teammate names. For other criteria (labels, repo, date range), translate them into the matching `gh search prs` qualifiers and then apply steps 4–7 below.
 
 1. **Resolve the org:** extract the org from the `{owner}/{repo}` resolved in Step 0 (e.g. `ProjectAussie`).
 
-2. **Find teammate usernames:** ask the user for a list of names or GitHub handles to search for. If they provide display names (e.g. "Claire", "Tom McT"), resolve them to GitHub logins by searching org members:
+2. **Resolve teammate usernames** from the names or GitHub handles the human gave. If they provided display names (e.g. "Claire", "Tom McT"), resolve them to GitHub logins by searching org members:
    ```
    gh api 'orgs/{org}/members' --paginate --jq '.[] | select(.login | test("{name}"; "i")) | .login'
    ```
@@ -80,7 +155,7 @@ Use `gh` and the GitHub search API to find open PRs by the user's teammates that
    Then ask: "Should I review all of these, or select a subset? I can also include the skipped PRs if you want to re-review them."
 
 7. Once the user confirms the set, continue with the normal Step 1 classification flow using those PRs.
-- For each PR, run `gh pr view <number> --json number,title,state,isDraft,baseRefName,headRefName,createdAt,author` to get metadata. The `author` field (its `login`) is required by Step 5's draft template — fetch it here, once, rather than leaving it for an agent to improvise later.
+- For each PR, run `gh pr view <number> -R {owner}/{repo} --json number,title,state,isDraft,baseRefName,headRefName,createdAt,author` to get metadata. The `author` field (its `login`) is required by Step 5's draft template — fetch it here, once, rather than leaving it for an agent to improvise later.
 - Determine the relationship between the PRs:
 
   | Relationship | Definition | Review strategy |
