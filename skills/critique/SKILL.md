@@ -244,6 +244,8 @@ f. Synthesize all findings into a single sorted list, deduplicating overlapping 
 
    **`{author}` for Artifact lines only.** Resolve it from the same source as the URL. For sources 1 and 2, or source 3 when the current authenticated user posted the marker, it's the current human, formatted as `<name> (@<github-login>)` from `git config user.name` and `gh api user --jq .login`. Treat an empty value, or a login ending in `[bot]`, as a failed lookup. If one of the two lookups fails, use the part that resolved. Show that `{author}` to the human once and let them confirm or correct it before writing the line, because the git identity, the GitHub account and the claude.ai account that owns the artifact can all differ. If the marker came from someone else, use that comment's platform author display name. If nothing usable resolves, ask the human for the owner's name. If they decline, or don't have one, omit the line.
 
+   **Public repos.** A `/plan-task` backup includes the plan's security audit, which can list findings that aren't fixed yet. Before writing the `More info:` line, run `gh repo view --json visibility --jq .visibility`. If it prints `PUBLIC`, ask the human whether to link the backup from this public PR. Show them the URL. Leave the line out unless they say yes. For any other visibility, or if the check fails, link as normal.
+
    If no source yields a URL (`[NO-TICKET]`, no marker comment, the connector is unavailable, or the lookup fails), leave the line out silently. The plan line never blocks opening the PR. Link only, and never paste the plan's contents into the PR body.
 
    **If PR creation failed, stop here — skip the reviewer fallback chain, skip Steps 9 and 10, and warn the human.**
