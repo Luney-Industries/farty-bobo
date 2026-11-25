@@ -253,13 +253,16 @@ _desktop_skills_dir() {
 }
 
 # Symlinks every skill dir from the repo into $1; prints a summary line.
+# "_"-prefixed dirs (e.g. _shared) are support code, not skills: they are
+# symlinked too, because skill scripts source them via ../../_<name>/, but
+# they are not counted as skills.
 _symlink_skills_to() {
   local target="$1" skill_dir skill_name count=0
   for skill_dir in "$REPO_DIR/skills"/*/; do
     [[ -d "$skill_dir" ]] || continue
     skill_name="$(basename "${skill_dir%/}")"
     symlink_dir "$REPO_DIR/skills/$skill_name" "$target/$skill_name"
-    count=$((count + 1))
+    [[ "$skill_name" == _* ]] || count=$((count + 1))
   done
   ok "$count skill dirs symlinked to $target"
 }

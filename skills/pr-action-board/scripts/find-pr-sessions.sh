@@ -51,16 +51,22 @@
 #   name    name_kind is not null
 #   pr_url  the transcript mentions the PR URL (pull/12 does not match pull/123)
 #   ticket  the transcript mentions the ticket key (case-insensitive;
-#           YOU-1 does not match YOU-10 or XYOU-1)
+#           YOU-1 does not match YOU-10, XYOU-1 or X_YOU-1)
 #
 # Sorted strong first, then score, then recency; at most 10 per PR.
 #
 # A find error (unreadable folder, folder removed mid-scan) is reported as a
-# WARN on stderr; the exit status stays 0.
+# WARN on stderr; the exit status stays 0. If the transcript scan itself fails,
+# the script prints ERROR on stderr, nothing on stdout, and exits 1: no output
+# means "unknown", never "no sessions".
 #
 # The scan is one perl pass that never fully decodes large lines: macOS grep and
 # pure-perl JSON decoding are both far too slow over gigabytes of JSONL.
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=SCRIPTDIR/../../_shared/transcripts.sh
+source "$SCRIPT_DIR/../../_shared/transcripts.sh"
 
 USAGE="Usage: find-pr-sessions.sh <pr_url> <head_ref> <ticket_or_empty> [exclude_agent_name] [exclude_session_id]
        find-pr-sessions.sh --batch [exclude_agent_name] [exclude_session_id] < prs.json"
@@ -100,14 +106,7 @@ else
 fi
 
 PROJECTS_DIR="${CLAUDE_PROJECTS_DIR:-$HOME/.claude/projects}"
-MAX_AGE_DAYS="${PR_SESSIONS_MAX_AGE_DAYS:-14}"
-
-if [[ "$MAX_AGE_DAYS" =~ ^[0-9]{1,6}$ ]]; then
-  MAX_AGE_DAYS=$((10#$MAX_AGE_DAYS))   # base 10: "08" is eight, not bad octal
-else
-  echo "WARN: PR_SESSIONS_MAX_AGE_DAYS must be a whole number (got '$MAX_AGE_DAYS'); using 14" >&2
-  MAX_AGE_DAYS=14
-fi
+MAX_AGE_DAYS="$(transcripts_max_age PR_SESSIONS_MAX_AGE_DAYS 14)"
 
 # Group per-transcript records by PR, keep every input PR as a key, rank, cap.
 # shellcheck disable=SC2016  # jq source: $vars belong to jq, not bash
@@ -115,7 +114,7 @@ AGGREGATE_JQ='
   (reduce .[] as $r ({}; .[$r.pr_url] += [$r.candidate])) as $by_pr
   | reduce $prs[] as $p ({};
       .[$p.pr_url] = (($by_pr[$p.pr_url] // [])
-        | sort_by((if .confidence == "strong" then 0 else 1 end), -.score, -.last_active)
+        | sort_by((if .confidence == "strong" then 0 else 1 end), -.score, -(.last_active // 0))
         | .[:10]))
   | if $mode == "single" then .[$url] else . end'
 
@@ -129,19 +128,6 @@ if [[ ! -d "$PROJECTS_DIR" ]]; then
   exit 0
 fi
 
-AGE_ARGS=()
-if [[ "$MAX_AGE_DAYS" -gt 0 ]]; then
-  AGE_ARGS=(-mtime "-$MAX_AGE_DAYS")
-fi
-
-# Prints NUL-separated transcript paths. find's own errors become WARN lines on
-# stderr and never fail the script.
-list_transcripts() {
-  { find "$PROJECTS_DIR" -mindepth 2 -maxdepth 2 -type f -name '*.jsonl' \
-      ${AGE_ARGS[@]+"${AGE_ARGS[@]}"} -print0 2>&1 1>&3 \
-      | sed 's/^/WARN: /' >&2; } 3>&1 || true
-}
-
 # One JSON line per (transcript, PR) pair that matched at least one signal:
 #   {"pr_url": ..., "candidate": {...}}
 # Lines are matched as raw UTF-8 bytes; names are compared as decoded text;
@@ -153,6 +139,7 @@ use warnings;
 no warnings "regexp";
 use Encode qw(decode_utf8 encode_utf8);
 use JSON::PP;
+use TranscriptScan qw(json_str session_meta ticket_re ticket_hits);
 
 my $out     = JSON::PP->new->utf8->canonical;
 my $exclude = decode_utf8($ENV{FPS_EXCLUDE_NAME} // "");
@@ -175,51 +162,9 @@ my @urls    = map { encode_utf8($_->{url}) } @prs;
 my $url_alt = join "|", map { quotemeta } sort { length $b <=> length $a } @urls;
 my $url_re  = qr/($url_alt)(?![0-9])/;
 my @tickets = grep { length } map { encode_utf8(lc $_->{ticket}) } @prs;
-my $tkt_alt = join "|", map { quotemeta } sort { length $b <=> length $a } @tickets;
-my $tkt_re  = @tickets ? qr/(?<![A-Za-z0-9])($tkt_alt)(?![0-9])/i : undef;
+my $tkt_re  = ticket_re(@tickets);
 my %n_url   = map { $_ => 1 } @urls;
 my %n_tkt   = map { $_ => 1 } @tickets;
-
-# Decode a raw JSON string body (escapes intact) into text. Cached: the same few
-# cwd and branch values repeat on every line.
-my %dec_cache;
-sub json_str {
-  my ($raw) = @_;
-  return $dec_cache{$raw} //= do {
-    my $v = eval { decode_json(qq({"v":"$raw"}))->{v} };
-    defined $v ? $v : decode_utf8($raw);
-  };
-}
-
-# Raw (still JSON-escaped) value of the top-level string field $_[1] (given as
-# q("key":")) in the raw JSON line $_[0], without a full decode; undef if absent.
-# A raw match of "key":" always starts at a structural quote (quotes inside
-# strings are escaped), so the match is top-level iff the bytes after it, with
-# string literals stripped, close exactly one more bracket than they open.
-# Claude Code writes cwd/gitBranch after the (possibly huge) message body, so
-# the walk goes right to left and usually stops at the first hit. Each byte is
-# examined once. $_[0] is used in place to avoid copying long lines.
-sub top_value {
-  my $key = $_[1];
-  my ($pos, $seg_end, $net) = (length $_[0], length $_[0], 0);
-  while ($pos > 0 && ($pos = rindex($_[0], $key, $pos - 1)) >= 0) {
-    my $seg = substr($_[0], $pos, $seg_end - $pos);
-    $seg =~ s/"[^"\\]*(?:\\.[^"\\]*)*"//g;
-    $net += ($seg =~ tr/}]//) - ($seg =~ tr/{[//);
-    $seg_end = $pos;
-    next unless $net == 1;
-    pos($_[0]) = $pos + length $key;
-    return $_[0] =~ /\G([^"\\]*(?:\\.[^"\\]*)*)"/gc ? $1 : undef;
-  }
-  return undef;
-}
-
-sub top_object {
-  my ($line) = @_;
-  return undef if length($line) > 1_048_576;
-  my $obj = eval { decode_json($line) };
-  return ref $obj eq "HASH" ? $obj : undef;
-}
 
 my %repo_cache;
 sub repo_of {
@@ -258,40 +203,21 @@ sub name_kind {
 
 for my $file (@ARGV) {
   open(my $fh, "<:raw", $file) or do { warn "WARN: cannot read $file: $!\n"; next };
-  my ($agent, $title, $cwd_raw, $last_cwd_raw, $branch_raw);
-  my (%branches, %hit_url, %hit_tkt);
+  my (%m, %hit_url, %hit_tkt);
   while (my $line = <$fh>) {
-    if (index($line, q("type":"agent-name")) >= 0) {
-      my $o = top_object($line);
-      $agent = $o->{agentName}
-        if $o && ($o->{type} // "") eq "agent-name" && defined $o->{agentName} && !ref $o->{agentName};
-    } elsif (index($line, q("type":"custom-title")) >= 0) {
-      my $o = top_object($line);
-      $title = $o->{customTitle}
-        if $o && ($o->{type} // "") eq "custom-title" && defined $o->{customTitle} && !ref $o->{customTitle};
-    }
-    if (index($line, q("cwd":")) >= 0) {
-      my $v = top_value($line, q("cwd":"));
-      if (defined $v) {
-        $cwd_raw //= $v;
-        $last_cwd_raw = $v;
-      }
-    }
-    if (index($line, q("gitBranch":")) >= 0) {
-      my $v = top_value($line, q("gitBranch":"));
-      if (defined $v) {
-        $branch_raw = $v;
-        $branches{$v} = 1;
-      }
-    }
+    session_meta(\%m, $line);
     if (keys %hit_url < keys %n_url) {
       $hit_url{$1} = 1 while $line =~ /$url_re/g;
     }
     if (defined $tkt_re && keys %hit_tkt < keys %n_tkt) {
-      $hit_tkt{lc $1} = 1 while $line =~ /$tkt_re/g;
+      ticket_hits($tkt_re, $line, \%hit_tkt);
     }
   }
+  my $mtime = (stat $fh)[9];
   close $fh;
+  next unless defined $mtime;
+  my ($agent, $title, $cwd_raw, $last_cwd_raw, $branch_raw) =
+    @m{qw(agent title cwd_raw last_cwd_raw branch_raw)};
 
   (my $sid = $file) =~ s{.*/}{};
   $sid =~ s/\.jsonl\z//;
@@ -299,11 +225,10 @@ for my $file (@ARGV) {
   next if length $excl_id && $sid eq $excl_id;
   next if length $exclude && defined $agent && $agent eq $exclude;
 
-  my %branch_text = map { json_str($_) => 1 } keys %branches;
+  my %branch_text = map { json_str($_) => 1 } keys %{ $m{branches} || {} };
   my $cwd      = defined $cwd_raw      ? json_str($cwd_raw)      : undef;
   my $last_cwd = defined $last_cwd_raw ? json_str($last_cwd_raw) : undef;
   my $git_br   = defined $branch_raw   ? json_str($branch_raw)   : undef;
-  my $mtime    = (stat $file)[9];
   my ($repo, $repo_done);
 
   for my $pr (@prs) {
@@ -337,7 +262,7 @@ for my $file (@ARGV) {
         score        => $score,
         confidence   => $strong ? "strong" : "weak",
         signals      => \@signals,
-        last_active  => defined $mtime ? $mtime + 0 : undef,
+        last_active  => $mtime + 0,
       },
     }), "\n";
   }
@@ -349,7 +274,13 @@ if [[ "$PRS_JSON" == "[]" ]]; then
   exit 0
 fi
 
-list_transcripts \
-  | FPS_PRS="$PRS_JSON" FPS_EXCLUDE_NAME="$EXCLUDE_NAME" FPS_EXCLUDE_ID="$EXCLUDE_ID" \
-    xargs -0 perl -e "$SCAN_PERL" \
-  | emit
+# Buffer the scan so a failed scan prints nothing rather than empty results.
+SCAN_OUT="$(mktemp)"
+trap 'rm -f "$SCAN_OUT"' EXIT
+if ! transcripts_list "$PROJECTS_DIR" "$MAX_AGE_DAYS" \
+     | FPS_PRS="$PRS_JSON" FPS_EXCLUDE_NAME="$EXCLUDE_NAME" FPS_EXCLUDE_ID="$EXCLUDE_ID" \
+       xargs -0 perl -I"$TRANSCRIPT_SHARED_DIR" -e "$SCAN_PERL" >"$SCAN_OUT"; then
+  echo "ERROR: transcript scan failed; results unknown" >&2
+  exit 1
+fi
+emit <"$SCAN_OUT"

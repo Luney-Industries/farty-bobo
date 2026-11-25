@@ -593,6 +593,36 @@ test_batch_invalid_input_is_usage_error() {
   done
 }
 
+# Real transcripts write cwd/gitBranch AFTER the message body. Reading those
+# fields once left pos() past the body, so a PR URL in the body was missed.
+test_pr_url_before_cwd_on_same_line_is_found() {
+  # Given
+  fresh_projects
+  append p body-first "$(jq -cn --arg u "$PR_URL" --arg c "$REPO_APP" \
+    '{type:"assistant", message:{content:("opened " + $u)}, cwd:$c, gitBranch:"main"}')"
+  # When
+  run_finder
+  # Then
+  assert_rc 0 &&
+  assert_jq "url in body before cwd is a pr_url signal" \
+    '.[0].session_id == "body-first" and (.[0].signals | index("pr_url"))'
+}
+
+# A failed scan must not look like "no sessions": no stdout, ERROR, exit 1.
+test_scan_failure_prints_nothing_and_exits_1() {
+  # Given
+  fresh_projects
+  transcript p strong "" "$HEAD_REF" >/dev/null
+  # When
+  run_finder PERL5OPT=-MNoSuchMod
+  # Then
+  assert_rc 1 &&
+  assert_stderr_contains "ERROR: transcript scan failed" &&
+  if [[ -s "$OUT" ]]; then
+    echo "  FAIL: stdout not empty: $(head -c 200 "$OUT")"; return 1
+  fi
+}
+
 # ── Main ───────────────────────────────────────────────────────────────────
 
 for t in $(declare -F | awk '{print $3}' | grep '^test_'); do
