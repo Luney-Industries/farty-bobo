@@ -58,7 +58,7 @@ Create the directory if it does not exist (`(umask 077; mkdir -p "$TEMP_DIR/plan
   - For a Jira or freeform epic, ask for a single Linear team or project, and say that Jira content will be copied into Linear.
   - The human can also answer `artifact` or `skip`.
 
-  Pass the confirmed target and consent to every `/plan-task` agent (Step 3 sub-step 3), so child agents never re-ask.
+  Use `/plan-task`'s current consent prompt word for word. It says the plan's security audit, including unfixed findings, goes into the backup. Pass the confirmed target and consent to every `/plan-task` agent (Step 3 sub-step 3), marked `consent_version: 2`, so child agents never re-ask. A consent collected before this prompt existed (an epic resumed from an older session) isn't version 2: ask again.
 - **Every later checkpoint** (or a resumed session per above): `Artifact({action: "publish", file_path: <epic-context.md path>, url: <the known URL>})` — update in place, never a second ticket comment.
 - If the `Artifact` publish call itself fails, log it and skip — it never blocks epic planning.
 - **Load the `artifact-design` skill before the first publish call of a session** (the `Artifact` tool requires this even for a `.md` file a skill instructs it to write). This is a plain data mirror, not a designed page — skip any visual design pass, but still load the skill so the call is well-formed.
@@ -123,9 +123,9 @@ For each ticket (one at a time, in order):
    - The confirmed `{author}` string (see the checkpoint rules above), for the child's `Plan backup:` ticket comment
    - The confirmed child plan backup target and consent (see the checkpoint rules above), so the child skips its own backup-target prompt
 
-   **Do not echo the agent's full output back into the conversation.** When the agent returns, extract only: (a) clarifying questions, if any, and (b) the plan file path once approved. Discard everything else.
+   **Do not echo the agent's full output back into the conversation.** When the agent returns, extract only: (a) clarifying questions, if any, (b) the plan file path once approved, and (c) the plan's Security Audit verdict, plus the ID, severity, and one-line title of every finding that needs a human decision (any `Open` finding, any proposed risk acceptance, any `non-test control` to confirm). Discard everything else.
 
-4. **Coordinate:** The agent will surface clarifying questions. Relay **only the questions** to the human — do not repeat ticket content or agent reasoning back into the thread. Collect the human's answers as short bullet points and pass them back to the agent. Do not paraphrase or resolve ambiguity on your own — the human owns the answers.
+4. **Coordinate:** The agent will surface clarifying questions and security decisions. Relay **only those** to the human — do not repeat ticket content or agent reasoning back into the thread. Relay (c) word for word. Only the human can accept a risk by finding ID; never accept, downgrade, or dismiss a finding on the human's behalf, and pass the human's answer back to the agent verbatim. Collect the human's answers as short bullet points and pass them back to the agent. Do not paraphrase or resolve ambiguity on your own — the human owns the answers.
 
 5. **Persist the output:** Once `/plan-task` produces an approved plan for this ticket, update the running **Epic Context file** (`$TEMP_DIR/plans/epic-context.md`, creating it on the first ticket) with:
    - The plan file path for this ticket
